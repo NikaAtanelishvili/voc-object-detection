@@ -25,6 +25,10 @@ def main(argv: list[str] | None = None) -> int:
     parse.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
     parse.add_argument("--out", type=Path, default=Path("data/processed/annotations.parquet"))
 
+    splits = sub.add_parser("splits", help="Write the frozen train/val/test ID lists.")
+    splits.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
+    splits.add_argument("--out-dir", type=Path, default=Path("splits"))
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -40,6 +44,11 @@ def main(argv: list[str] | None = None) -> int:
         from vocdet.data.parse_voc import build_annotations
 
         build_annotations(args.voc_dir, args.out)
+        return 0
+    if args.command == "splits":
+        from vocdet.data.splits import build_splits
+
+        build_splits(args.voc_dir, args.out_dir)
         return 0
     parser.print_help()
     return 0

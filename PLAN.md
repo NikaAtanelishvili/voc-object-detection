@@ -272,7 +272,7 @@ classic bug.
 - [x] **P1.3** `constants.py`: `VOC_CLASSES` and `COCO_TO_VOC` mapping (airplane→aeroplane,
       motorcycle→motorbike, couch→sofa, dining table→diningtable, potted plant→pottedplant, tv→tvmonitor, plus the
       identical names). _Tests:_ 20 unique classes, mapping covers all 20.
-- [ ] **P1.4** `data/splits.py`: build the train/val/test ID lists per §3 and write them to `splits/*.txt`.
+- [x] **P1.4** `data/splits.py`: build the train/val/test ID lists per §3 and write them to `splits/*.txt`.
       _Tests:_ disjoint sets, deterministic across two calls, sizes add up. Commit the split files with type `data`
       (they are small text). **Splits are frozen from here.** Add **ADR-002 Split protocol**.
 - [ ] **P1.5** Exporters.

@@ -61,6 +61,40 @@ order they are written, so the plan's references stay valid.
 
 ---
 
+## ADR-002: Split protocol
+
+- **Date:** 2026-10-28
+- **Status:** accepted. **Splits are frozen**; changing them requires a new ADR and rerunning every
+  experiment (CLAUDE.md hard rule 5).
+- **Context:** VOC2012 test labels are not public. We need an untouched test set for the final numbers, a
+  validation set for every model-selection and tuning decision, and identical splits for every model.
+- **Decision:**
+  - `test` = official VOC2012 `ImageSets/Main/val.txt`. It is used only in Phase 5 by
+    `scripts/final_test_eval.py`, once per final model.
+  - `val` = a random 10% of official `ImageSets/Main/train.txt`: `round(0.1 × n)` images sampled with
+    `random.Random(42).sample` from the **sorted** ID list, so the result depends only on the set of IDs and
+    the seed.
+  - `train` = the rest of official `train`.
+  - Files: `splits/{train,val,test}.txt`, sorted, one ID per line, committed with commit type `data`.
+    `vocdet splits` regenerates them. `write_splits` refuses to overwrite a split file with different
+    content (`SplitsFrozenError`), so rerunning it anywhere is safe.
+  - Later stages read the committed files (`load_splits`) and never recompute them.
+  - EDA inspects only train and val labels; test labels are not looked at before Phase 5.
+- **Verified on 2026-10-28:** the official lists have the sizes PLAN.md §3 expects (5,717 train, 5,823
+  val, no overlap). The resulting split sizes are given by `wc -l splits/*.txt`.
+- **Alternatives considered:**
+  - k-fold CV: too expensive on the GPU budget.
+  - Stratifying val by class: VOC images are multi-label, so stratification is ill-defined. With ~570
+    images, every class still appears in val (checked by P1.7).
+  - Using official val as val and holding out part of train as test: that would make the test set smaller
+    and non-standard.
+- **Consequences:** test numbers are on the full official VOC2012 val (comparable in protocol, but not in
+  interpolation, to published "VOC2012 val" results). Val is small, so val mAP is noisier; single-seed
+  differences of under about one point should not be over-interpreted.
+- **Pinned versions:** none added.
+
+---
+
 ## ADR-005: Python 3.11 floor
 
 - **Date:** 2026-10-28
