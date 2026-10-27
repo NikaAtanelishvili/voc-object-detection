@@ -38,6 +38,7 @@ def test_collect_copies_small_files_and_writes_row(tmp_path: Path) -> None:
         "train_log.csv",
     ]
     assert rows[0]["map50"] == 0.61
+    assert b"\r" not in (tmp_path / "results" / "experiments.csv").read_bytes()
     (row,) = read_csv(tmp_path / "results" / "experiments.csv")
     assert row["exp_id"] == "E1" and row["map50"] == "0.61" and row["map_small"] == ""
 

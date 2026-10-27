@@ -71,7 +71,8 @@ def rebuild_experiments_csv(results_runs: Path, csv_path: Path) -> list[dict]:
     rows = [experiment_row(d) for d in sorted(results_runs.iterdir()) if d.is_dir()]
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=COLUMNS)
+        # lineterminator: csv defaults to "\r\n", which shows up as noise in git diffs.
+        writer = csv.DictWriter(f, fieldnames=COLUMNS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     return rows
