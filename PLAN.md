@@ -294,7 +294,7 @@ classic bug.
       resolution distribution, difficult/truncated share, and a grid of 12 annotated samples. Write 5–8 bullet
       findings that affect modelling (for example: person dominates, so expect class imbalance; many small bottles
       and plants, so expect low AP_small).
-- [ ] **P1.9** CPU Kaggle kernel `vocdet-prepare-data`: runs download → parse → integrity → export (YOLO + COCO)
+- [x] **P1.9** CPU Kaggle kernel `vocdet-prepare-data`: runs download → parse → integrity → export (YOLO + COCO)
       → EDA, and writes `/kaggle/working/voc_prepared/` (images, labels, yaml, coco jsons, parquet, figures). Pull
       only the small outputs (parquet, jsons, figures, EDA.md) locally. All training kernels attach this kernel via
       `kernel_sources`. The first GPU kernel must log the actual mount path under `/kaggle/input/` and put it into

@@ -60,6 +60,7 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | Date | Run ID | Accelerator | Script time | Charged | Cumulative |
 |---|---|---|---|---|---|
 | 2026-10-28 | `env_check_20261028-0054_d4cbed4` | GPU T4 x2 | 27 s | 0.05 h | 0.05 h |
+| 2026-10-28 | `prepare_data_20261028-0208_7b7605e` | CPU only (no GPU quota) | 187 s | 0 h | 0.05 h |
 
 ## Kaggle kernel runtime
 
@@ -97,3 +98,30 @@ Consequences:
   local 2.14.1 pin). Code must not rely on features newer than the Kaggle versions listed here.
 - Accelerator selection works from the CLI (`kaggle kernels push --accelerator NvidiaTeslaT4`); no manual
   UI step is needed.
+
+## Kaggle CPU kernel (prepare-data)
+
+Recorded 2026-10-28 by `vocdet-prepare-data` (`configs/kaggle/prepare_data.yaml`, commit `7b7605e`).
+Source files: `results/env/kaggle_prepare_data_versions.json` and `results/env/kaggle_prepare_data_run.json`.
+
+| Item | Value |
+|---|---|
+| Python | 3.13.15 (same image family as the GPU kernel) |
+| torch | 2.11.0+cpu (the CPU kernel gets a CPU build) |
+| pandas / numpy | 2.3.3 / 2.1.3 (match our pins) |
+| pycocotools | 2.0.11 (matches our pin) |
+| pyarrow | **23.0.1** (our local pin is 26.0.0) |
+| matplotlib | **3.10.0** (our local pin is 3.11.2) |
+| tabulate | 0.10.0 (installed from the config's `kaggle.pip`) |
+| Script wall time | 187 s for download + full prepare |
+
+Consequences:
+
+- The parquet table, all three COCO JSONs, and every EDA table and summary are **byte-identical** to the
+  local run, despite the pyarrow and matplotlib version differences. The only difference was the row
+  order of `resolutions.csv`, which was fixed in `0415ff6`.
+- Training kernels mount the prepared data through `kernel_sources: [vocdet-prepare-data]`. The expected
+  path is `/kaggle/input/vocdet-prepare-data/prepare_data_20261028-0208_7b7605e/voc_prepared/`. The first
+  GPU kernel (P2.6) must log the actual mount path and record it in `configs/data/voc2012.yaml`.
+- `kaggle kernels output` lists outputs 20 per page and filters client-side. The prep kernel's ~23k
+  outputs hit HTTP 429 until `kaggle_pull.py` switched to `--page-size 200` with one retry.
