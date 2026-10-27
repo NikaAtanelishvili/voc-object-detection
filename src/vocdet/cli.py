@@ -45,6 +45,13 @@ def main(argv: list[str] | None = None) -> int:
     integrity.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
     integrity.add_argument("--splits-dir", type=Path, default=Path("splits"))
 
+    eda = sub.add_parser("eda", help="EDA tables (results/eda), figures, and reports/EDA.md.")
+    eda.add_argument("--annotations", type=Path, default=Path("data/processed/annotations.parquet"))
+    eda.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
+    eda.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    eda.add_argument("--results-dir", type=Path, default=Path("results/eda"))
+    eda.add_argument("--report", type=Path, default=Path("reports/EDA.md"))
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -87,6 +94,16 @@ def main(argv: list[str] | None = None) -> int:
 
         annotations = pd.read_parquet(args.annotations)
         check_integrity(annotations, load_splits(args.splits_dir), args.voc_dir)
+        return 0
+    if args.command == "eda":
+        import pandas as pd
+
+        from vocdet.data.eda import run_eda
+        from vocdet.data.splits import load_splits
+
+        annotations = pd.read_parquet(args.annotations)
+        splits_ = load_splits(args.splits_dir)
+        run_eda(annotations, splits_, args.voc_dir, args.results_dir, args.report)
         return 0
     parser.print_help()
     return 0

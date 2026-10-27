@@ -115,3 +115,11 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   refer to the Main lists.
 - **Impact:** none on later tasks. P1.7 still checks the counts against §3.
 - **ADR:** [ADR-007](DECISIONS.md#adr-007-canonical-annotation-table-and-coordinate-convention)
+
+### 2026-10-28 — P1.8 — Sample grid saved as JPEG
+- **Planned:** `reports/figures/eda_*.png`.
+- **Actual:** the 12-image sample grid is `eda_samples.jpg` (quality 80). The other six figures are PNG.
+- **Reason:** as PNG the photo grid is 2.67 MB, over the 500 KB figure limit (hard rule 2) and the
+  1 MB pre-commit guard. As JPEG it is about 360 KB.
+- **Impact:** none.
+- **ADR:** none

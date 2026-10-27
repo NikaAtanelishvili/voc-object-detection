@@ -289,7 +289,7 @@ classic bug.
 - [x] **P1.7** `data/integrity.py`: the counts from §3 match, every image file exists, there are no zero-area
       boxes, every image has ≥1 non-difficult object (log and handle any that don't), and class distribution per
       split is printed. A mismatch stops with an error (hard rule 8).
-- [ ] **P1.8** `data/eda.py` producing `reports/figures/eda_*.png` and `reports/EDA.md`: instances per class
+- [x] **P1.8** `data/eda.py` producing `reports/figures/eda_*.png` and `reports/EDA.md`: instances per class
       per split, objects per image histogram, size-bucket distribution per class, box aspect ratios, image
       resolution distribution, difficult/truncated share, and a grid of 12 annotated samples. Write 5–8 bullet
       findings that affect modelling (for example: person dominates, so expect class imbalance; many small bottles

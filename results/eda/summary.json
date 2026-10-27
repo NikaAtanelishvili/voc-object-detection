@@ -1,0 +1,43 @@
+{
+  "images": {
+    "train": 5145,
+    "val": 572,
+    "test": 5823
+  },
+  "objects_non_difficult": {
+    "train": 12277,
+    "val": 1332
+  },
+  "difficult_share": 0.13725117281602636,
+  "truncated_share": 0.5136300240902751,
+  "top_class": "person",
+  "top_class_share": 0.30838152643153866,
+  "rarest_class": "sofa",
+  "imbalance_ratio": 14.731517509727626,
+  "classes_without_train_objects": [],
+  "small_share_overall": 0.06010728194577118,
+  "smallest_classes": [
+    "bottle",
+    "car",
+    "pottedplant"
+  ],
+  "objects_per_image_median": 2.0,
+  "objects_per_image_max": 27,
+  "single_object_image_share": 0.4773482595767011,
+  "images_only_difficult": 0,
+  "max_width": 500,
+  "max_height": 500,
+  "distinct_resolutions": 544,
+  "aspect_p05": 0.3207043064957511,
+  "tallest_classes": [
+    "bottle",
+    "person",
+    "chair"
+  ],
+  "widest_classes": [
+    "aeroplane",
+    "boat",
+    "diningtable"
+  ],
+  "aspect_p95": 2.6422839506172826
+}

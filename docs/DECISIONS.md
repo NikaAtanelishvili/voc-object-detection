@@ -168,4 +168,6 @@ order they are written, so the plan's references stay valid.
 - **Consequences:** exporters, the dataset, and the evaluator all trust the table without re-checking.
   Tests cover border boxes, single-pixel boxes, fractional coordinates, parts, and invalid boxes.
 - **Pinned versions:** runtime `pandas==2.3.3`, `numpy==2.1.3` (the same as Kaggle), `pyarrow==26.0.0`
-  (Kaggle's pyarrow version is not recorded yet; P1.9 checks it).
+  (Kaggle's pyarrow version is not recorded yet; P1.9 checks it). Added later in Phase 1: `pycocotools==2.0.11` (P1.5, the same as
+  Kaggle), `matplotlib==3.11.2` and `tabulate==0.10.0` (P1.8, EDA figures and markdown tables; Kaggle
+  versions are checked in P1.9).
