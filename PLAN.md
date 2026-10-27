@@ -45,7 +45,7 @@ torchvision on Kaggle; install only what is missing there.
 
 | Layer               | Choice                                                                                                        | Why                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Language            | Python ≥3.10 (match Kaggle)                                                                                   | Kaggle runtime compatibility                                                                        |
+| Language            | Python ≥3.11 (Kaggle runs 3.13; ADR-005)                                                                      | Kaggle runtime compatibility                                                                        |
 | Env / packaging     | `uv` + `pyproject.toml` (src layout)                                                                          | Fast, lockfile-based, reproducible                                                                  |
 | DL framework        | PyTorch + torchvision                                                                                         | Standard CV ecosystem; Faster R-CNN reference implementation                                        |
 | One-stage detector  | Ultralytics **YOLO26** (n, s)                                                                                 | Current Ultralytics family (Jan 2026), NMS-free end-to-end inference, clean export to ONNX/OpenVINO |
@@ -261,40 +261,40 @@ classic bug.
 
 ### Phase 1 — Data (Day 1 afternoon → Day 2 morning)
 
-- [ ] **P1.1** `data/download.py`: idempotent download to a target dir, primary and fallback URL, streaming with
+- [x] **P1.1** `data/download.py`: idempotent download to a target dir, primary and fallback URL, streaming with
       a progress log, MD5 verification (value read from torchvision), extraction.
       _Tests:_ MD5 verification with a tiny fake file; skip-if-exists logic.
-- [ ] **P1.2** `data/parse_voc.py`: parse `Annotations/*.xml` into a canonical pandas DataFrame saved as parquet,
+- [x] **P1.2** `data/parse_voc.py`: parse `Annotations/*.xml` into a canonical pandas DataFrame saved as parquet,
       with columns `image_id, width, height, class_name, class_id, x1, y1, x2, y2, difficult, truncated`. Apply the
       1-based→0-based conversion. Assert `0 ≤ x1 < x2 ≤ width` (same for y).
       _Tests:_ two hand-written fixture XMLs in `tests/fixtures/` covering the coordinate conversion, a difficult
       flag, and multiple objects.
-- [ ] **P1.3** `constants.py`: `VOC_CLASSES` and `COCO_TO_VOC` mapping (airplane→aeroplane,
+- [x] **P1.3** `constants.py`: `VOC_CLASSES` and `COCO_TO_VOC` mapping (airplane→aeroplane,
       motorcycle→motorbike, couch→sofa, dining table→diningtable, potted plant→pottedplant, tv→tvmonitor, plus the
       identical names). _Tests:_ 20 unique classes, mapping covers all 20.
-- [ ] **P1.4** `data/splits.py`: build the train/val/test ID lists per §3 and write them to `splits/*.txt`.
+- [x] **P1.4** `data/splits.py`: build the train/val/test ID lists per §3 and write them to `splits/*.txt`.
       _Tests:_ disjoint sets, deterministic across two calls, sizes add up. Commit the split files with type `data`
       (they are small text). **Splits are frozen from here.** Add **ADR-002 Split protocol**.
-- [ ] **P1.5** Exporters.
+- [x] **P1.5** Exporters.
   - `export_yolo.py`: Ultralytics layout (`images/{train,val,test}` as symlinks, or copies on Kaggle if
     symlinks fail; `labels/*.txt` with `cls cx cy w h` normalized; difficult objects excluded) and a
     `voc_yolo.yaml` with `path`, `train`, `val`, `test`, `names`.
   - `export_coco.py`: COCO JSON per split, with categories 1..20 mapped from VOC idx, `area`, and
     `iscrowd = difficult`.
     _Tests:_ round-trip (canonical → YOLO → back) within 1e-4. COCO JSON validates with `pycocotools.COCO`.
-- [ ] **P1.6** `data/dataset.py` + `transforms.py`: torch `Dataset` for Faster R-CNN returning
+- [x] **P1.6** `data/dataset.py` + `transforms.py`: torch `Dataset` for Faster R-CNN returning
       `(image_tensor, {"boxes", "labels" (+1 offset), "image_id"})` with difficult excluded. Horizontal flip
       implemented manually (flip the image and set `x1' = W - x2, x2' = W - x1`). Provide a `collate_fn`.
       _Tests:_ flip twice equals identity, boxes stay valid, label offset is correct.
-- [ ] **P1.7** `data/integrity.py`: the counts from §3 match, every image file exists, there are no zero-area
+- [x] **P1.7** `data/integrity.py`: the counts from §3 match, every image file exists, there are no zero-area
       boxes, every image has ≥1 non-difficult object (log and handle any that don't), and class distribution per
       split is printed. A mismatch stops with an error (hard rule 8).
-- [ ] **P1.8** `data/eda.py` producing `reports/figures/eda_*.png` and `reports/EDA.md`: instances per class
+- [x] **P1.8** `data/eda.py` producing `reports/figures/eda_*.png` and `reports/EDA.md`: instances per class
       per split, objects per image histogram, size-bucket distribution per class, box aspect ratios, image
       resolution distribution, difficult/truncated share, and a grid of 12 annotated samples. Write 5–8 bullet
       findings that affect modelling (for example: person dominates, so expect class imbalance; many small bottles
       and plants, so expect low AP_small).
-- [ ] **P1.9** CPU Kaggle kernel `vocdet-prepare-data`: runs download → parse → integrity → export (YOLO + COCO)
+- [x] **P1.9** CPU Kaggle kernel `vocdet-prepare-data`: runs download → parse → integrity → export (YOLO + COCO)
       → EDA, and writes `/kaggle/working/voc_prepared/` (images, labels, yaml, coco jsons, parquet, figures). Pull
       only the small outputs (parquet, jsons, figures, EDA.md) locally. All training kernels attach this kernel via
       `kernel_sources`. The first GPU kernel must log the actual mount path under `/kaggle/input/` and put it into
@@ -352,6 +352,9 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
 - [ ] **P4.1** `train/train_yolo.py`: maps our YAML config onto Ultralytics `train()` args (`data, epochs, imgsz,
 batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the model default, augmentation
       keys, `project/name` inside the run dir). Saves the Ultralytics `results.csv` as `train_log.csv`.
+      _Added (owner, 2026-10-28):_ installing the pinned ultralytics on Kaggle must not change the
+      preinstalled torch/torchvision. The runner records their versions before and after the install and
+      fails the run if they differ.
 - [ ] **P4.2** `predict_yolo` adapter → `Prediction` (conf 0.001, max_det 100). Also record Ultralytics' own
       `model.val()` mAP50 on val as a **cross-check**. Explain any difference (interpolation, difficult handling) in
       an ADR. Our evaluator is authoritative.
@@ -420,7 +423,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
       image, detections table, counts, latency.
 - [ ] **P7.3** Tests with FastAPI `TestClient` and a fake detector: happy path, each error code, class filter,
       and the counts aggregation. CI never needs real weights.
-- [ ] **P7.4** `app/Dockerfile`: python slim, non-root user, only the runtime deps (no training deps), port
+- [ ] **P7.4** `app/Dockerfile`: python 3.13 slim (owner decision 2026-10-28), non-root user, only the runtime deps (no training deps), port
       7860, weights downloaded from the HF Hub **at a pinned revision** at build time. A healthcheck is defined.
       `make docker-build && make docker-run` works locally.
 - [ ] **P7.5 [MANUAL]** On Hugging Face: create the model repo `<user>/vocdet-models` (public) and the Space

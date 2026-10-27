@@ -25,6 +25,11 @@ class KaggleSettings(BaseModel):
         default_factory=list,
         description="Kernel slugs whose outputs are mounted under /kaggle/input (prepared data).",
     )
+    pull_pattern: str | None = Field(
+        default=None,
+        description="Regex (re.search on each output path) selecting which outputs to download; "
+        "None downloads everything. Lets the prep kernel keep 2 GB of images on Kaggle.",
+    )
 
 
 class JobConfig(BaseModel):

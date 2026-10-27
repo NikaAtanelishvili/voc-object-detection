@@ -1,0 +1,13 @@
+# P1.9: CPU kernel `vocdet-prepare-data`. Downloads VOC2012 into /tmp (not saved as output), then writes
+# everything training kernels need to /kaggle/working/<run_id>/voc_prepared/ (they mount it via
+# kernel_sources). Uses no GPU quota.
+exp_id: prepare_data
+kaggle:
+  command: >-
+    vocdet prepare --download-root /tmp/vocdata --splits-dir splits
+    --out-dir {run_dir}/voc_prepared --mode copy
+  gpu: false
+  # Not in the Kaggle image record (docs/ENVIRONMENT.md); pinned like pyproject.toml.
+  pip: ["tabulate==0.10.0"]
+  # Pull only the small artifacts; the ~2 GB of copied images and 11k label files stay on Kaggle.
+  pull_pattern: '(kaggle_run\.json|command\.log|versions\.json|annotations\.parquet|coco/[a-z]+\.json|eda/[^/]+|EDA\.md|figures/[^/]+|voc_yolo\.yaml)$'

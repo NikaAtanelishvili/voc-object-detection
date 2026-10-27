@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -130,6 +131,8 @@ def main() -> int:
     (kernel_dir / "runner.py").write_text(
         render_runner(repo_url, commit_sha, run_id, cfg, gpu), encoding="utf-8"
     )
+    # The config travels with the kernel folder: provenance, and kaggle_pull reads pull_pattern.
+    shutil.copyfile(args.config, kernel_dir / "config.yaml")
     metadata = build_metadata(username, cfg.exp_id, gpu, sources)
     (kernel_dir / "kernel-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     logger.info("Kernel folder: %s (commit %s, gpu=%s)", kernel_dir, commit_sha[:7], gpu)

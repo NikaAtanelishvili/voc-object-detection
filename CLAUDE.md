@@ -94,7 +94,7 @@ impact, and a link to an ADR if one was written. Never deviate silently.
 
 ## Code style
 
-- Python **≥3.10 compatible** (match Kaggle; see `docs/ENVIRONMENT.md`). Package lives in `src/vocdet/`.
+- Python **≥3.11 compatible**; Kaggle runs 3.13 and CI tests 3.11 + 3.13 (see `docs/ENVIRONMENT.md`, ADR-005). Package lives in `src/vocdet/`.
 - Type hints on all public functions. Docstrings explain **why**, not just what.
 - `ruff` for formatting and linting (config in `pyproject.toml`), line length 100.
 - Use `pathlib`, the `logging` module (no `print` in library code), and YAML configs validated by pydantic models.

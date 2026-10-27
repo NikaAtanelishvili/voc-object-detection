@@ -1,0 +1,15 @@
+{
+  "run_id": "prepare_data_20261028-0208_7b7605e",
+  "repo_url": "https://github.com/NikaAtanelishvili/voc-object-detection.git",
+  "commit_sha": "7b7605edbc4175cb37d5997288f8c52428966d3b",
+  "command": "vocdet prepare --download-root /tmp/vocdata --splits-dir splits --out-dir /kaggle/working/prepare_data_20261028-0208_7b7605e/voc_prepared --mode copy",
+  "pip_packages": [
+    "tabulate==0.10.0"
+  ],
+  "gpu_requested": false,
+  "python": "3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]",
+  "started_utc": "2026-10-27T22:08:57.924635+00:00",
+  "ended_utc": "2026-10-27T22:12:05.181312+00:00",
+  "wall_time_s": 187.3,
+  "returncode": 0
+}
