@@ -204,3 +204,35 @@ order they are written, so the plan's references stay valid.
     a difficult box is ignored. This is slightly more lenient than VOC's standard-IoU rule for difficult
     objects, and it applies identically to every model.
 - **Pinned versions:** runtime `torchmetrics==1.9.0` (the same as Kaggle).
+
+---
+
+## ADR-009: TIDE-lite error analysis rules
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** PLAN.md §4 asks for our own error breakdown (Cls, Loc, Both, Dupe, Bkg, Miss) plus a
+  confusion matrix. The `tidecv` package is unmaintained (ADR-001), and the exact rules must be explainable.
+- **Decision:** `src/vocdet/eval/error_analysis.py`:
+  - **Score threshold.** Only detections with score ≥ a threshold are analysed. The CLI default is 0.5;
+    reports use each model's F1-optimal operating threshold on val. With the mAP setting (conf 0.001),
+    near-zero-score background hits would swamp the counts.
+  - **Matching.** Per image, detections in descending score order. Each is compared with the same-class
+    ground-truth box of highest IoU (difficult boxes included), following the VOC devkit. At IoU ≥ 0.5: a
+    difficult box makes it Ignored, an unmatched box makes it TP, and an already matched box makes it Dupe.
+  - **False-positive order:** Cls (IoU ≥ 0.5 with another class) → Loc (0.1 ≤ IoU < 0.5, same class) →
+    Both (0.1 ≤ IoU < 0.5, other class) → Bkg. Only non-difficult objects count here. This mirrors the
+    TIDE priority.
+  - **Miss** = every non-difficult object never matched as TP.
+  - **Confusion matrix:** 21×21, index 20 = background, rows = true class, columns = predicted class. Cls
+    goes to `[true, predicted]`; Loc, Both, Dupe, and Bkg go to `[background, predicted]`; Miss goes to
+    `[true, background]`. Cells count events, so row sums are not object counts.
+  - The IoU is computed by hand (`box_iou`, vectorised numpy).
+- **Alternatives considered:**
+  - Weighting errors by their mAP impact, as TIDE does: more faithful, but requires re-running the evaluator
+    per error type. Counts are enough to rank error sources and are easy to defend.
+  - Matching each detection to the best *unmatched* object instead of the VOC argmax rule: this differs only
+    in crowded scenes. We keep the devkit behaviour so our TP counts match VOC conventions.
+- **Consequences:** counts depend on the threshold, so every report must state it. Ignored detections
+  appear in the records but in no count or matrix cell.
+- **Pinned versions:** none added.

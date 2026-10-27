@@ -67,6 +67,16 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--splits-dir", type=Path, default=Path("splits"))
     ev.add_argument("--out", type=Path, help="Write metrics JSON here (default: print only).")
 
+    errors = sub.add_parser("errors", help="TIDE-lite error analysis of a predictions JSON.")
+    errors.add_argument("--pred", type=Path, required=True)
+    errors.add_argument("--split", choices=["train", "val", "test"], default="val")
+    errors.add_argument("--threshold", type=float, default=0.5, help="Minimum detection score.")
+    errors.add_argument(
+        "--annotations", type=Path, default=Path("data/processed/annotations.parquet")
+    )
+    errors.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    errors.add_argument("--out-dir", type=Path, required=True)
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -142,6 +152,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.out:
             write_metrics(metrics, args.out)
         print(json.dumps(metrics, indent=2))  # noqa: T201  (CLI output)
+        return 0
+    if args.command == "errors":
+        import pandas as pd
+
+        from vocdet.data.splits import load_splits
+        from vocdet.eval.error_analysis import analyze, write_error_analysis
+        from vocdet.eval.schema import ground_truth_from_annotations, read_predictions
+
+        image_ids = load_splits(args.splits_dir)[args.split]
+        gt = ground_truth_from_annotations(pd.read_parquet(args.annotations), image_ids)
+        result = analyze(read_predictions(args.pred), gt, score_threshold=args.threshold)
+        write_error_analysis(result, args.out_dir)
         return 0
     parser.print_help()
     return 0

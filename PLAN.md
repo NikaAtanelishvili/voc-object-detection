@@ -312,7 +312,7 @@ iou_type="bbox", class_metrics=True)` that passes `iscrowd` from the difficult f
 map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --split val`.
       _Tests (synthetic):_ perfect predictions → map50 = 1.0; no predictions → 0; a detection on a difficult GT
       leaves the score unchanged (ignore region); swapping a label lowers that class's AP.
-- [ ] **P2.3** `eval/error_analysis.py` (TIDE-lite from §4), own implementation with plain loops, IoU function
+- [x] **P2.3** `eval/error_analysis.py` (TIDE-lite from §4), own implementation with plain loops, IoU function
       written by hand (vectorized numpy allowed). Outputs counts per error type overall and per class, plus a
       20×20 (+background) confusion matrix.
       _Tests:_ one hand-built case for each error type.
