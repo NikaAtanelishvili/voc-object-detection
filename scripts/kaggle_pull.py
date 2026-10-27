@@ -23,6 +23,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 KERNELS_DIR = REPO_ROOT / "kaggle" / "kernels"
 RUNS_DIR = REPO_ROOT / "runs"
 RUNNING_STATES = {"QUEUED", "RUNNING", "NEW_SCRIPT"}
+MAX_PAGE_SIZE = 200  # the CLI's documented maximum for `kernels output --page-size`
+RETRY_PAUSE_S = 120
 
 
 def parse_status(cli_output: str) -> str:
@@ -46,6 +48,24 @@ def wait_for_kernel(kernel_id: str, poll_s: int) -> str:
         time.sleep(poll_s)
 
 
+def download_outputs(kernel_id: str, pull_pattern: str | None) -> None:
+    """Download kernel outputs into runs/, retrying once after a pause.
+
+    The CLI lists every output file page by page and filters by pattern on our side, so a kernel
+    with ~23k outputs (the prep kernel's images and labels) can hit Kaggle's rate limit (HTTP 429).
+    The largest page size cuts the number of requests; the retry skips files already downloaded.
+    """
+    command = ["kaggle", "kernels", "output", kernel_id, "--path", str(RUNS_DIR)]
+    command += ["--page-size", str(MAX_PAGE_SIZE)]
+    if pull_pattern:
+        command += ["--file-pattern", pull_pattern]
+    if subprocess.run(command).returncode == 0:
+        return
+    logger.warning("Download failed (often HTTP 429 rate limit); retrying in %ds", RETRY_PAUSE_S)
+    time.sleep(RETRY_PAUSE_S)
+    subprocess.run(command, check=True)
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -62,10 +82,7 @@ def main() -> int:
     status = wait_for_kernel(kernel_id, args.poll_s)
     logger.info("%s finished with status %s; downloading outputs", kernel_id, status)
     RUNS_DIR.mkdir(exist_ok=True)
-    command = ["kaggle", "kernels", "output", kernel_id, "--path", str(RUNS_DIR), "--force"]
-    if pull_pattern:
-        command += ["--file-pattern", pull_pattern]
-    subprocess.run(command, check=True)
+    download_outputs(kernel_id, pull_pattern)
 
     run_dir = RUNS_DIR / args.run_id
     # Outputs belong to the kernel's latest version; if a newer run was pushed to the same kernel,
