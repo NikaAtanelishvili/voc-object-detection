@@ -123,3 +123,20 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   1 MB pre-commit guard. As JPEG it is about 360 KB.
 - **Impact:** none.
 - **ADR:** none
+
+### 2026-10-28 — P1.9 — Prep output under the run folder; `prepare.py` and `pull_pattern` added
+- **Planned:** the kernel writes `/kaggle/working/voc_prepared/`. The layout (§2) has no `prepare.py`.
+- **Actual:**
+  - Output goes to `/kaggle/working/<run_id>/voc_prepared/`, so training kernels mount it at
+    `/kaggle/input/vocdet-prepare-data/<run_id>/voc_prepared` (to be verified by the first GPU kernel and
+    recorded in `configs/data/voc2012.yaml`).
+  - The pipeline is one function, `src/vocdet/data/prepare.py::prepare_all`, exposed as `vocdet prepare`.
+  - `KaggleSettings.pull_pattern` (a regex) limits what `kaggle_pull.py` downloads. `kaggle_run.py` saves
+    the config into the kernel folder so the pull can read it.
+- **Reason:** keeping every output under `<run_id>/` keeps the runner contract from P0.6, where
+  `kaggle_pull.py` uses `<run_id>/kaggle_run.json` to tell runs apart. The run ID in the mount path also
+  pins which data version a training run used. Without a pull filter, the pull would download about 2 GB
+  of copied images.
+- **Impact:** training configs reference a path containing the prep run ID. A new prep run means updating
+  `configs/data/voc2012.yaml`.
+- **ADR:** none

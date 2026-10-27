@@ -43,3 +43,28 @@ def test_exp_id_must_be_slug_safe(tmp_path: Path) -> None:
 def test_non_mapping_yaml_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="mapping"):
         load_job_config(write(tmp_path, "- just\n- a list\n"))
+
+
+def test_prepare_data_pull_pattern_selects_only_small_outputs() -> None:
+    import re
+
+    cfg = load_job_config(REPO_ROOT / "configs" / "kaggle" / "prepare_data.yaml")
+    assert cfg.kaggle.gpu is False
+    pattern = re.compile(cfg.kaggle.pull_pattern)
+    root = "prepare_data_20261028-0900_abc1234"
+    wanted = [
+        f"{root}/kaggle_run.json",
+        f"{root}/command.log",
+        f"{root}/voc_prepared/annotations.parquet",
+        f"{root}/voc_prepared/coco/train.json",
+        f"{root}/voc_prepared/eda/summary.json",
+        f"{root}/voc_prepared/EDA.md",
+        f"{root}/voc_prepared/figures/eda_samples.jpg",
+        f"{root}/voc_prepared/yolo/voc_yolo.yaml",
+    ]
+    unwanted = [
+        f"{root}/voc_prepared/yolo/images/train/2008_000008.jpg",
+        f"{root}/voc_prepared/yolo/labels/train/2008_000008.txt",
+    ]
+    assert all(pattern.search(p) for p in wanted)
+    assert not any(pattern.search(p) for p in unwanted)

@@ -15,6 +15,8 @@ import sys
 import time
 from pathlib import Path
 
+from vocdet.config import load_job_config
+
 logger = logging.getLogger("kaggle_pull")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -55,13 +57,15 @@ def main() -> int:
     if not metadata_path.exists():
         raise SystemExit(f"No kernel folder for run {args.run_id} at {metadata_path.parent}")
     kernel_id = json.loads(metadata_path.read_text())["id"]
+    pull_pattern = load_job_config(metadata_path.parent / "config.yaml").kaggle.pull_pattern
 
     status = wait_for_kernel(kernel_id, args.poll_s)
     logger.info("%s finished with status %s; downloading outputs", kernel_id, status)
     RUNS_DIR.mkdir(exist_ok=True)
-    subprocess.run(
-        ["kaggle", "kernels", "output", kernel_id, "--path", str(RUNS_DIR), "--force"], check=True
-    )
+    command = ["kaggle", "kernels", "output", kernel_id, "--path", str(RUNS_DIR), "--force"]
+    if pull_pattern:
+        command += ["--file-pattern", pull_pattern]
+    subprocess.run(command, check=True)
 
     run_dir = RUNS_DIR / args.run_id
     # Outputs belong to the kernel's latest version; if a newer run was pushed to the same kernel,

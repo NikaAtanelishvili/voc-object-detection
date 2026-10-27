@@ -52,6 +52,14 @@ def main(argv: list[str] | None = None) -> int:
     eda.add_argument("--results-dir", type=Path, default=Path("results/eda"))
     eda.add_argument("--report", type=Path, default=Path("reports/EDA.md"))
 
+    prepare = sub.add_parser(
+        "prepare", help="Full data pipeline (the Kaggle prep kernel runs this)."
+    )
+    prepare.add_argument("--download-root", type=Path, default=Path("data"))
+    prepare.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    prepare.add_argument("--out-dir", type=Path, default=Path("data/voc_prepared"))
+    prepare.add_argument("--mode", choices=["symlink", "copy"], default="copy")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -104,6 +112,13 @@ def main(argv: list[str] | None = None) -> int:
         annotations = pd.read_parquet(args.annotations)
         splits_ = load_splits(args.splits_dir)
         run_eda(annotations, splits_, args.voc_dir, args.results_dir, args.report)
+        return 0
+    if args.command == "prepare":
+        from vocdet.data.download import download_voc2012
+        from vocdet.data.prepare import prepare_all
+
+        voc_dir = download_voc2012(args.download_root)
+        prepare_all(voc_dir, args.splits_dir, args.out_dir, image_mode=args.mode)
         return 0
     parser.print_help()
     return 0
