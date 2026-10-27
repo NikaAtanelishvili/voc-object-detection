@@ -3,7 +3,8 @@
 Faster R-CNN, YOLO, and every exported ONNX/OpenVINO variant are converted to `Prediction`, and
 all metrics are computed from it by the same evaluator. That is what makes comparisons fair
 (PLAN.md §2). Boxes are absolute, 0-based xyxy floats in original image pixels; labels are VOC
-indices 0-19. JSON files round boxes to 0.01 px and scores to 5 decimals.
+indices 0-19. JSON files store the float32 values unrounded, so evaluating a saved file gives
+exactly the metrics computed in memory during the run.
 """
 
 import json
@@ -72,12 +73,16 @@ class GroundTruth:
 
 
 def write_predictions(predictions: list[Prediction], path: Path) -> None:
-    """One JSON list, one object per image. Plain lists keep the file readable and diffable."""
+    """One JSON list, one object per image.
+
+    No rounding: float32 -> Python float -> JSON -> float32 is exact. Rounding boxes to 0.01 px once
+    shifted E0b's map50_95 by 2e-4 between the in-run and the file-based evaluation.
+    """
     records = [
         {
             "image_id": p.image_id,
-            "boxes": p.boxes.round(2).tolist(),
-            "scores": p.scores.round(5).tolist(),
+            "boxes": p.boxes.tolist(),
+            "scores": p.scores.tolist(),
             "labels": p.labels.tolist(),
         }
         for p in predictions

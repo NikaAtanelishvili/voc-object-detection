@@ -46,7 +46,9 @@ def test_prediction_json_round_trip(tmp_path: Path) -> None:
     write_predictions(preds, tmp_path / "p.json")
     back = read_predictions(tmp_path / "p.json")
     assert [p.image_id for p in back] == ["a", "b"]
-    np.testing.assert_allclose(back[0].boxes, [[1.23, 2.0, 30.5, 40.25]], atol=1e-5)
+    # Lossless: the arrays come back bit-identical (float32 survives the JSON round trip).
+    np.testing.assert_array_equal(back[0].boxes, preds[0].boxes)
+    np.testing.assert_array_equal(back[0].scores, preds[0].scores)
     assert back[0].labels.tolist() == [14]
     assert back[1].boxes.shape == (0, 4)
 

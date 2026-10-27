@@ -112,8 +112,8 @@ def main() -> int:
     parser.add_argument(
         "--append-args",
         default="",
-        help="Extra arguments appended to the config's command, e.g. '--resolve-only' for a CPU "
-        "check of a GPU kernel. The full command is recorded in kaggle_run.json.",
+        help="Extra arguments appended to the config's command. Use the = form for values that "
+        "start with dashes: --append-args=--resolve-only. Recorded in kaggle_run.json.",
     )
     args = parser.parse_args()
 
