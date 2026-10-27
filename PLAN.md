@@ -286,7 +286,7 @@ classic bug.
       `(image_tensor, {"boxes", "labels" (+1 offset), "image_id"})` with difficult excluded. Horizontal flip
       implemented manually (flip the image and set `x1' = W - x2, x2' = W - x1`). Provide a `collate_fn`.
       _Tests:_ flip twice equals identity, boxes stay valid, label offset is correct.
-- [ ] **P1.7** `data/integrity.py`: the counts from §3 match, every image file exists, there are no zero-area
+- [x] **P1.7** `data/integrity.py`: the counts from §3 match, every image file exists, there are no zero-area
       boxes, every image has ≥1 non-difficult object (log and handle any that don't), and class distribution per
       split is printed. A mismatch stops with an error (hard rule 8).
 - [ ] **P1.8** `data/eda.py` producing `reports/figures/eda_*.png` and `reports/EDA.md`: instances per class

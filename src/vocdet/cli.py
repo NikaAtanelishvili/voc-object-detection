@@ -38,6 +38,13 @@ def main(argv: list[str] | None = None) -> int:
     export.add_argument("--out-dir", type=Path, default=Path("data/prepared"))
     export.add_argument("--mode", choices=["symlink", "copy"], default="symlink")
 
+    integrity = sub.add_parser("integrity", help="Check counts, files, boxes; log class counts.")
+    integrity.add_argument(
+        "--annotations", type=Path, default=Path("data/processed/annotations.parquet")
+    )
+    integrity.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
+    integrity.add_argument("--splits-dir", type=Path, default=Path("splits"))
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -71,6 +78,15 @@ def main(argv: list[str] | None = None) -> int:
         image_dir = args.voc_dir / "JPEGImages"
         export_yolo(annotations, split_ids, image_dir, args.out_dir / "yolo", mode=args.mode)
         export_coco(annotations, split_ids, args.out_dir / "coco")
+        return 0
+    if args.command == "integrity":
+        import pandas as pd
+
+        from vocdet.data.integrity import check_integrity
+        from vocdet.data.splits import load_splits
+
+        annotations = pd.read_parquet(args.annotations)
+        check_integrity(annotations, load_splits(args.splits_dir), args.voc_dir)
         return 0
     parser.print_help()
     return 0
