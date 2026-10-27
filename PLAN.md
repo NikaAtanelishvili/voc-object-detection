@@ -264,7 +264,7 @@ classic bug.
 - [x] **P1.1** `data/download.py`: idempotent download to a target dir, primary and fallback URL, streaming with
       a progress log, MD5 verification (value read from torchvision), extraction.
       _Tests:_ MD5 verification with a tiny fake file; skip-if-exists logic.
-- [ ] **P1.2** `data/parse_voc.py`: parse `Annotations/*.xml` into a canonical pandas DataFrame saved as parquet,
+- [x] **P1.2** `data/parse_voc.py`: parse `Annotations/*.xml` into a canonical pandas DataFrame saved as parquet,
       with columns `image_id, width, height, class_name, class_id, x1, y1, x2, y2, difficult, truncated`. Apply the
       1-based→0-based conversion. Assert `0 ≤ x1 < x2 ≤ width` (same for y).
       _Tests:_ two hand-written fixture XMLs in `tests/fixtures/` covering the coordinate conversion, a difficult

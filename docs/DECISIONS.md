@@ -108,3 +108,30 @@ order they are written, so the plan's references stay valid.
   from torchvision, not from the mirror.
 - **Pinned versions:** runtime `torch==2.11.0`, `torchvision==0.26.0` (CPU wheels locally and in CI; the
   same versions Kaggle preinstalls, see `docs/ENVIRONMENT.md`).
+
+---
+
+## ADR-007: Canonical annotation table and coordinate convention
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** VOC XML boxes are 1-based, inclusive pixel indices. torchvision, Ultralytics, and pycocotools
+  all expect continuous 0-based coordinates. An off-by-one here silently shifts every box in every model.
+- **Decision:**
+  - `src/vocdet/data/parse_voc.py` is the **only** place that reads XML. It converts each box to 0-based
+    float xyxy as `(xmin - 1, ymin - 1, xmax, ymax)`. A box covering pixel columns 1..W becomes `[0, W]`, so
+    `x2 - x1` equals the number of covered pixels and a 1-pixel box has width 1.
+  - Validity is asserted per box: `0 ≤ x1 < x2 ≤ width` and `0 ≤ y1 < y2 ≤ height`. Any violation raises
+    `AnnotationError` with the file name; nothing is clipped silently.
+  - The output is one parquet table, one row per object, with columns `image_id, width, height, class_name,
+    class_id, x1, y1, x2, y2, difficult, truncated`. `class_id` indexes `VOC_CLASSES` (0–19). The two
+    flags are booleans; a missing tag means 0.
+  - Only `<object>/<bndbox>` (a direct child) is read. Person-layout `<part>` boxes are ignored.
+  - Only the images in `ImageSets/Main/trainval.txt` are parsed. `Annotations/` also holds action- and
+    layout-only images that are not part of the detection benchmark.
+- **Alternatives considered:** keeping 1-based integers and converting in each exporter. That means three
+  places to get the same off-by-one right instead of one.
+- **Consequences:** exporters, the dataset, and the evaluator all trust the table without re-checking.
+  Tests cover border boxes, single-pixel boxes, fractional coordinates, parts, and invalid boxes.
+- **Pinned versions:** runtime `pandas==2.3.3`, `numpy==2.1.3` (the same as Kaggle), `pyarrow==26.0.0`
+  (Kaggle's pyarrow version is not recorded yet; P1.9 checks it).

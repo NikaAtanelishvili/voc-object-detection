@@ -104,3 +104,14 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** none on data, provided the MD5 matches. pjreddie.com is a personal site and the MD5 is the
   only integrity guarantee (ADR-006).
 - **ADR:** [ADR-006](DECISIONS.md#adr-006-voc2012-download-source-and-integrity-check)
+
+### 2026-10-28 — P1.2 — `VOC_CLASSES` created before P1.3; only trainval XMLs parsed
+- **Planned:** `constants.py` belongs to P1.3. P1.2 parses `Annotations/*.xml`.
+- **Actual:** P1.2 creates `constants.py` with `VOC_CLASSES` only, because `class_id` needs it. P1.3 adds
+  `COCO_TO_VOC` and its tests. P1.2 parses the images listed in `ImageSets/Main/trainval.txt`, not every
+  XML in `Annotations/`.
+- **Reason:** the parser cannot assign `class_id` without the class list. `Annotations/` also contains
+  action- and layout-only images that are not part of the detection task, and the expected counts in §3
+  refer to the Main lists.
+- **Impact:** none on later tasks. P1.7 still checks the counts against §3.
+- **ADR:** [ADR-007](DECISIONS.md#adr-007-canonical-annotation-table-and-coordinate-convention)
