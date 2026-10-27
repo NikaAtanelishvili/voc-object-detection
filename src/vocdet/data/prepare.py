@@ -68,6 +68,10 @@ def find_prepared_dir(root: Path = Path("/kaggle/input")) -> Path:
     patterns = ("*/voc_prepared/annotations.parquet", "*/*/voc_prepared/annotations.parquet")
     found = sorted({p.parent for pattern in patterns for p in root.glob(pattern)})
     if len(found) != 1:
-        raise FileNotFoundError(f"Expected exactly one voc_prepared/ under {root}, found {found}")
+        listing = sorted(str(p) for p in root.glob("*/*/*"))[:40]
+        raise FileNotFoundError(
+            f"Expected exactly one voc_prepared/ under {root}, found {found}. "
+            f"First entries 3 levels down: {listing}"
+        )
     logger.info("Prepared data found at %s", found[0])
     return found[0]
