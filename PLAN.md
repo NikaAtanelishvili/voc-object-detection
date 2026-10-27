@@ -352,6 +352,9 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
 - [ ] **P4.1** `train/train_yolo.py`: maps our YAML config onto Ultralytics `train()` args (`data, epochs, imgsz,
 batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the model default, augmentation
       keys, `project/name` inside the run dir). Saves the Ultralytics `results.csv` as `train_log.csv`.
+      _Added (owner, 2026-10-28):_ installing the pinned ultralytics on Kaggle must not change the
+      preinstalled torch/torchvision. The runner records their versions before and after the install and
+      fails the run if they differ.
 - [ ] **P4.2** `predict_yolo` adapter → `Prediction` (conf 0.001, max_det 100). Also record Ultralytics' own
       `model.val()` mAP50 on val as a **cross-check**. Explain any difference (interpolation, difficult handling) in
       an ADR. Our evaluator is authoritative.
@@ -420,7 +423,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
       image, detections table, counts, latency.
 - [ ] **P7.3** Tests with FastAPI `TestClient` and a fake detector: happy path, each error code, class filter,
       and the counts aggregation. CI never needs real weights.
-- [ ] **P7.4** `app/Dockerfile`: python slim, non-root user, only the runtime deps (no training deps), port
+- [ ] **P7.4** `app/Dockerfile`: python 3.13 slim (owner decision 2026-10-28), non-root user, only the runtime deps (no training deps), port
       7860, weights downloaded from the HF Hub **at a pinned revision** at build time. A healthcheck is defined.
       `make docker-build && make docker-run` works locally.
 - [ ] **P7.5 [MANUAL]** On Hugging Face: create the model repo `<user>/vocdet-models` (public) and the Space

@@ -12,6 +12,23 @@ Checked 2026-10-28 with `python3 --version`, `uv --version`, `uname -r`.
 | System Python | 3.12.3 |
 | uv | 0.13.5 |
 
+## Python 3.13 support of later-phase packages
+
+Checked 2026-10-28 against the PyPI JSON API (`https://pypi.org/pypi/<pkg>/json`, latest release, Linux
+x86_64 wheels). Versions are re-checked and pinned when each package is added.
+
+| Package | Latest | `requires_python` | Python 3.13 on Linux x86_64 |
+|---|---|---|---|
+| ultralytics | 8.4.191 | >=3.8 | pure-Python `py3` wheel, 3.13 classifier; needs only `torch>=1.8.0`, `torchvision>=0.9.0` |
+| onnxruntime | 1.31.1 | **>=3.11** | `cp313` manylinux_2_28 wheel |
+| openvino | 2026.4.1 | >=3.10 | `cp313` manylinux_2_28 wheel |
+| onnx | 1.23.2 | >=3.10 | `cp312-abi3` wheel (stable ABI, so it also installs on 3.13) |
+| torch / torchvision (CPU) | 2.14.1 / 0.29.1 | >=3.10 | `cp313` wheels |
+
+Consequences: the app Docker image uses Python 3.13 (owner decision, `docs/DEVIATIONS.md`). onnxruntime
+needs ≥3.11, so when it is added (Phase 6) it gets a `python_version >= '3.11'` marker or the floor is raised
+via an ADR.
+
 ## Kaggle account
 
 Quota as shown in Kaggle account settings, reported by the owner on 2026-10-28 (the CLI cannot read it).

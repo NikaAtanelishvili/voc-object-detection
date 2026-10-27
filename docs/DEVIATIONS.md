@@ -65,3 +65,23 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   change mid-project. The owner approved this at the Phase 0 gate.
 - **Impact:** none functionally. Revisit after the project ends.
 - **ADR:** none
+
+### 2026-10-28 — P7.4 — App Docker image on Python 3.13
+- **Planned:** "python slim" (no version given).
+- **Actual:** the Dockerfile will use a Python **3.13** slim base. PLAN.md P7.4 is updated to match.
+- **Reason:** Kaggle trains on 3.13, so serving on the same minor version avoids version skew between
+  training and serving. The owner approved this at the Phase 0 gate. ultralytics, onnxruntime, openvino,
+  and onnx all ship 3.13-compatible Linux wheels (`docs/ENVIRONMENT.md`).
+- **Impact:** CI already tests 3.13. No other change.
+- **ADR:** none (ADR-004 will reference it)
+
+### 2026-10-28 — P4.1 — Added acceptance criterion: Kaggle torch must stay untouched
+- **Planned:** P4.1 maps configs onto Ultralytics `train()`; it said nothing about install side effects.
+- **Actual:** P4.1 now also requires that installing the pinned ultralytics on Kaggle leaves the
+  preinstalled torch/torchvision unchanged. The runner records their versions before and after the
+  install and fails the run if they differ. PLAN.md P4.1 is updated to match.
+- **Reason:** owner request. A pip resolver upgrade of torch would break the CUDA build and waste GPU
+  quota. ultralytics 8.4.191 only requires `torch>=1.8.0`, so no change is expected, but it must be
+  proven, not assumed.
+- **Impact:** a small change to `kaggle/templates/runner.py.j2` plus a test, done in P4.1.
+- **ADR:** none
