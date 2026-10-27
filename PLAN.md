@@ -282,7 +282,7 @@ classic bug.
   - `export_coco.py`: COCO JSON per split, with categories 1..20 mapped from VOC idx, `area`, and
     `iscrowd = difficult`.
     _Tests:_ round-trip (canonical → YOLO → back) within 1e-4. COCO JSON validates with `pycocotools.COCO`.
-- [ ] **P1.6** `data/dataset.py` + `transforms.py`: torch `Dataset` for Faster R-CNN returning
+- [x] **P1.6** `data/dataset.py` + `transforms.py`: torch `Dataset` for Faster R-CNN returning
       `(image_tensor, {"boxes", "labels" (+1 offset), "image_id"})` with difficult excluded. Horizontal flip
       implemented manually (flip the image and set `x1' = W - x2, x2' = W - x1`). Provide a `collate_fn`.
       _Tests:_ flip twice equals identity, boxes stay valid, label offset is correct.
