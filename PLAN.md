@@ -269,7 +269,7 @@ classic bug.
       1-based→0-based conversion. Assert `0 ≤ x1 < x2 ≤ width` (same for y).
       _Tests:_ two hand-written fixture XMLs in `tests/fixtures/` covering the coordinate conversion, a difficult
       flag, and multiple objects.
-- [ ] **P1.3** `constants.py`: `VOC_CLASSES` and `COCO_TO_VOC` mapping (airplane→aeroplane,
+- [x] **P1.3** `constants.py`: `VOC_CLASSES` and `COCO_TO_VOC` mapping (airplane→aeroplane,
       motorcycle→motorbike, couch→sofa, dining table→diningtable, potted plant→pottedplant, tv→tvmonitor, plus the
       identical names). _Tests:_ 20 unique classes, mapping covers all 20.
 - [ ] **P1.4** `data/splits.py`: build the train/val/test ID lists per §3 and write them to `splits/*.txt`.
