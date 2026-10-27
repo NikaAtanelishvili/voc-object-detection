@@ -73,7 +73,9 @@ def compute_tables(df: pd.DataFrame, splits: dict[str, list[str]]) -> dict[str, 
     objects_per_image.index.name = "objects"
 
     sizes = df.groupby("image_id")[["width", "height"]].first()
-    resolutions = sizes.value_counts().rename("images").to_frame()
+    # groupby sorts by (width, height): a deterministic row order on every machine, unlike
+    # value_counts, whose order among equal counts differed between local and Kaggle runs.
+    resolutions = sizes.groupby(["width", "height"]).size().rename("images").to_frame()
     return {
         "class_counts": class_counts,
         "size_buckets": buckets,
