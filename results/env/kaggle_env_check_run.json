@@ -1,0 +1,13 @@
+{
+  "run_id": "env_check_20261028-0054_d4cbed4",
+  "repo_url": "https://github.com/NikaAtanelishvili/voc-object-detection.git",
+  "commit_sha": "d4cbed4f5412918b9a14f53d3ba818535e685a3d",
+  "command": "python scripts/env_check.py --out /kaggle/working/env_check_20261028-0054_d4cbed4",
+  "pip_packages": [],
+  "gpu_requested": true,
+  "python": "3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]",
+  "started_utc": "2026-10-27T20:54:40.917359+00:00",
+  "ended_utc": "2026-10-27T20:55:02.753989+00:00",
+  "wall_time_s": 21.8,
+  "returncode": 0
+}

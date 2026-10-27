@@ -240,7 +240,7 @@ classic bug.
      `HF_USERNAME` in local `.env`.
   5. (Optional) W&B account → put `WANDB_API_KEY` in `.env`.
   6. `KAGGLE_USERNAME` in `.env`.
-- [ ] **P0.6** Kaggle plumbing. Write `kaggle/templates/runner.py.j2` and `scripts/kaggle_run.py`:
+- [x] **P0.6** Kaggle plumbing. Write `kaggle/templates/runner.py.j2` and `scripts/kaggle_run.py`:
   - `kaggle_run.py --config <yaml> [--gpu/--cpu] [--sources kernel-slug,...]` checks for a clean tree and a
     pushed HEAD, renders the runner script with the repo URL, SHA, and CLI command, writes
     `kernel-metadata.json` (`kernel_type: script`, `enable_gpu`, `enable_internet: true`, `kernel_sources` for
