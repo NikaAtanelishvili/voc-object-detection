@@ -75,3 +75,36 @@ order they are written, so the plan's references stay valid.
 - **Consequences:** no environment-marker workarounds in `pyproject.toml`. Stdlib features from 3.11 are
   allowed (e.g. `datetime.UTC`, `tarfile` extraction filters from 3.11.4).
 - **Pinned versions:** unchanged; the markers on `kaggle==2.2.5` and `pre-commit==4.7.0` were removed.
+
+---
+
+## ADR-006: VOC2012 download source and integrity check
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** PLAN.md §3 named the Ultralytics assets mirror as the fallback, verified with torchvision's
+  MD5. Checked on 2026-10-28: that mirror serves `VOCtrainval_11-May-2012.zip` (1,950,180,009 bytes), a
+  different file from the official `.tar`, so torchvision's MD5 cannot verify it.
+- **Decision:**
+  - Primary URL, filename, MD5 (`6cd6e144f989b92b3379bac3b3de84fd`), and base dir are read **at runtime** from
+    `torchvision.datasets.voc.DATASET_YEAR_DICT["2012"]`. The primary is the Oxford host, which redirects
+    (301) to `https://www.robots.ox.ac.uk/~vgg/projects/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar`
+    (1,999,639,040 bytes).
+  - Fallback: `https://pjreddie.com/media/files/VOCtrainval_11-May-2012.tar`. It serves a tar of exactly the
+    same size, and it is verified with **the same torchvision MD5**.
+  - **pjreddie.com is a personal website** (Joseph Redmon, author of YOLO), not an official or institutional
+    mirror. It may disappear or change at any time. We do not trust the host. **The MD5 check is the
+    integrity guarantee**: any file whose MD5 differs is deleted and never extracted.
+  - Downloads stream to `<file>.part` and are renamed only when complete. A cached archive is reused only if
+    its MD5 matches. Extraction uses `tarfile` `filter="data"` and writes a marker file when it finishes.
+  - Once the Kaggle prep kernel (P1.9) has run, its output is the working cache, so later runs do not
+    download at all.
+- **Alternatives considered:**
+  - Ultralytics zip as the fallback: needs its own checksum (computed by a 1.95 GB download we would then
+    have to trust), zip handling, and possibly a different folder layout.
+  - No fallback: a single point of failure on the Oxford host during the 7-day window.
+- **Consequences:** MD5 protects against corruption and accidental substitution. It is not a defence against
+  a deliberate collision attack. That is acceptable for a public research dataset whose expected hash comes
+  from torchvision, not from the mirror.
+- **Pinned versions:** runtime `torch==2.11.0`, `torchvision==0.26.0` (CPU wheels locally and in CI; the
+  same versions Kaggle preinstalls, see `docs/ENVIRONMENT.md`).

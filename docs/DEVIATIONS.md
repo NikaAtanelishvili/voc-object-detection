@@ -93,3 +93,14 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   Owner decision.
 - **Impact:** removes the version markers from the dev dependencies. Python 3.10 is no longer supported.
 - **ADR:** [ADR-005](DECISIONS.md#adr-005-python-311-floor)
+
+### 2026-10-28 — P1.1 — Fallback mirror is pjreddie.com, not the Ultralytics assets mirror
+- **Planned:** fallback = Ultralytics assets mirror, verified with torchvision's MD5 (PLAN.md §3).
+- **Actual:** fallback = `https://pjreddie.com/media/files/VOCtrainval_11-May-2012.tar`, verified with the
+  same torchvision MD5.
+- **Reason:** the Ultralytics mirror serves a `.zip` (1,950,180,009 bytes), not the official `.tar`
+  (1,999,639,040 bytes), so the MD5 check in the plan cannot apply to it. pjreddie.com serves a tar of the
+  identical size. Reported under hard rule 8; the owner chose this option.
+- **Impact:** none on data, provided the MD5 matches. pjreddie.com is a personal site and the MD5 is the
+  only integrity guarantee (ADR-006).
+- **ADR:** [ADR-006](DECISIONS.md#adr-006-voc2012-download-source-and-integrity-check)

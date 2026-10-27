@@ -261,7 +261,7 @@ classic bug.
 
 ### Phase 1 — Data (Day 1 afternoon → Day 2 morning)
 
-- [ ] **P1.1** `data/download.py`: idempotent download to a target dir, primary and fallback URL, streaming with
+- [x] **P1.1** `data/download.py`: idempotent download to a target dir, primary and fallback URL, streaming with
       a progress log, MD5 verification (value read from torchvision), extraction.
       _Tests:_ MD5 verification with a tiny fake file; skip-if-exists logic.
 - [ ] **P1.2** `data/parse_voc.py`: parse `Annotations/*.xml` into a canonical pandas DataFrame saved as parquet,
