@@ -275,7 +275,7 @@ classic bug.
 - [x] **P1.4** `data/splits.py`: build the train/val/test ID lists per §3 and write them to `splits/*.txt`.
       _Tests:_ disjoint sets, deterministic across two calls, sizes add up. Commit the split files with type `data`
       (they are small text). **Splits are frozen from here.** Add **ADR-002 Split protocol**.
-- [ ] **P1.5** Exporters.
+- [x] **P1.5** Exporters.
   - `export_yolo.py`: Ultralytics layout (`images/{train,val,test}` as symlinks, or copies on Kaggle if
     symlinks fail; `labels/*.txt` with `cls cx cy w h` normalized; difficult objects excluded) and a
     `voc_yolo.yaml` with `path`, `train`, `val`, `test`, `names`.

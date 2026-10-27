@@ -29,6 +29,15 @@ def main(argv: list[str] | None = None) -> int:
     splits.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
     splits.add_argument("--out-dir", type=Path, default=Path("splits"))
 
+    export = sub.add_parser("export", help="Export YOLO layout and COCO JSON for every split.")
+    export.add_argument(
+        "--annotations", type=Path, default=Path("data/processed/annotations.parquet")
+    )
+    export.add_argument("--voc-dir", type=Path, default=Path("data/VOCdevkit/VOC2012"))
+    export.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    export.add_argument("--out-dir", type=Path, default=Path("data/prepared"))
+    export.add_argument("--mode", choices=["symlink", "copy"], default="symlink")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -49,6 +58,19 @@ def main(argv: list[str] | None = None) -> int:
         from vocdet.data.splits import build_splits
 
         build_splits(args.voc_dir, args.out_dir)
+        return 0
+    if args.command == "export":
+        import pandas as pd
+
+        from vocdet.data.export_coco import export_coco
+        from vocdet.data.export_yolo import export_yolo
+        from vocdet.data.splits import load_splits
+
+        annotations = pd.read_parquet(args.annotations)
+        split_ids = load_splits(args.splits_dir)
+        image_dir = args.voc_dir / "JPEGImages"
+        export_yolo(annotations, split_ids, image_dir, args.out_dir / "yolo", mode=args.mode)
+        export_coco(annotations, split_ids, args.out_dir / "coco")
         return 0
     parser.print_help()
     return 0
