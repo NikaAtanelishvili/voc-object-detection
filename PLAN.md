@@ -227,7 +227,7 @@ classic bug.
 - [x] **P0.3** CI: `.github/workflows/ci.yml` running on push and PR. Ubuntu, Python 3.11, uv, CPU-only torch
       (index-url for CPU wheels), then `make check`. Add a cache for uv.
       _Accept:_ green check on GitHub for the pushed commit.
-- [ ] **P0.4** Docs skeleton: `README.md` (title, one-paragraph summary, sections marked TODO),
+- [x] **P0.4** Docs skeleton: `README.md` (title, one-paragraph summary, sections marked TODO),
       `docs/DECISIONS.md` with the ADR template and **ADR-001 Stack choice** (from §1), `docs/MANUAL_STEPS.md`,
       `docs/DEVIATIONS.md` (with the entry template), `docs/phase-reports/`,
       `docs/ENVIRONMENT.md`, and stub files in `reports/`.
