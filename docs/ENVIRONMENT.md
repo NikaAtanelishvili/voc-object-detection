@@ -61,6 +61,10 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 |---|---|---|---|---|---|
 | 2026-10-28 | `env_check_20261028-0054_d4cbed4` | GPU T4 x2 | 27 s | 0.05 h | 0.05 h |
 | 2026-10-28 | `prepare_data_20261028-0208_7b7605e` | CPU only (no GPU quota) | 187 s | 0 h | 0.05 h |
+| 2026-10-28 | `E0b_20261028-0257_5978b2b` (failed: data not found) | GPU T4 x2 | 51 s | 0.05 h | 0.10 h |
+| 2026-10-28 | `env_check_20261028-0300_34ff675` (mount layout, CPU) | CPU only (no GPU quota) | 16 s | 0 h | 0.10 h |
+| 2026-10-28 | `env_check_20261028-0301_34ff675` (mount layout, T4) | GPU T4 x2 | 38 s | 0.05 h | 0.15 h |
+| 2026-10-28 | `E0b_20261028-0305_3fc1694` (failed: data not found) | GPU T4 x2 | 172 s | 0.05 h | 0.20 h |
 
 ## Kaggle kernel runtime
 
