@@ -4,6 +4,10 @@
 
 UV := uv run
 
+# Load KAGGLE_USERNAME etc. from the local, gitignored .env when it exists (CI has none).
+-include .env
+export
+
 setup:
 	uv sync
 	$(UV) pre-commit install
@@ -22,13 +26,14 @@ test:
 
 check: fmt-check lint test
 
-# Stubs below fail loudly so a missing target is never mistaken for a successful one.
+# RUN is a config path for kaggle-run (e.g. configs/kaggle/env_check.yaml) and a run_id for kaggle-pull.
 kaggle-run:
-	@echo "not implemented yet (P0.6): RUN=$(RUN)"; exit 1
+	$(UV) python scripts/kaggle_run.py --config $(RUN)
 
 kaggle-pull:
-	@echo "not implemented yet (P0.6): RUN=$(RUN)"; exit 1
+	$(UV) python scripts/kaggle_pull.py $(RUN)
 
+# Stubs below fail loudly so a missing target is never mistaken for a successful one.
 results:
 	@echo "not implemented yet (P2.5)"; exit 1
 

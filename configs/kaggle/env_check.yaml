@@ -1,0 +1,5 @@
+# Smoke kernel (P0.6): records the Kaggle GPU runtime into env.json. Takes ~2 GPU minutes.
+exp_id: env_check
+kaggle:
+  command: python scripts/env_check.py --out {run_dir}
+  gpu: true
