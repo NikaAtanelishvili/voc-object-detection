@@ -178,3 +178,16 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** a few seconds of setup per YOLO run. It must be verified that Ultralytics maps image paths to
   label paths without resolving the symlinks.
 - **ADR:** none
+
+### 2026-10-28 — P2.6 — torch guard in the runner implemented before P4.1; new `eval/zero_shot.py`
+- **Planned:** the torch/torchvision install guard is a P4.1 acceptance criterion. The layout (§2) has no
+  zero-shot module.
+- **Actual:** `kaggle/templates/runner.py.j2` now installs `kaggle.pip` packages under a constraints file
+  that pins the preinstalled torch/torchvision. It records their versions before and after the install
+  (`kaggle_run.json`) and exits if they changed. The E0b flow lives in `src/vocdet/eval/zero_shot.py`,
+  exposed as `vocdet zero-shot`. `find_prepared_dir` (in `data/prepare.py`) locates the mounted data.
+- **Reason:** E0b is the first kernel that installs ultralytics, so the owner's requirement applies now.
+  The zero-shot flow (predict, evaluate, write the run artifacts) is not a model adapter, so it does not
+  belong in `predict.py`.
+- **Impact:** P4.1 only has to confirm the guard on the training kernel.
+- **ADR:** [ADR-010](DECISIONS.md#adr-010-linux-only-lock-resolution-and-the-ultralytics-pin)

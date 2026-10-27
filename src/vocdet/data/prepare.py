@@ -57,3 +57,17 @@ def prepare_all(
     export_coco(annotations, splits, out_dir / "coco")
     run_eda(annotations, splits, voc_dir, out_dir / "eda", out_dir / "EDA.md")
     logger.info("Prepared data written to %s", out_dir)
+
+
+def find_prepared_dir(root: Path = Path("/kaggle/input")) -> Path:
+    """Locate voc_prepared/ under a Kaggle input mount and log where it is.
+
+    The mount layout of kernel_sources is not documented precisely, so we search the two plausible
+    depths instead of hard-coding a path (PLAN.md P1.9: the first GPU kernel logs the real path).
+    """
+    patterns = ("*/voc_prepared/annotations.parquet", "*/*/voc_prepared/annotations.parquet")
+    found = sorted({p.parent for pattern in patterns for p in root.glob(pattern)})
+    if len(found) != 1:
+        raise FileNotFoundError(f"Expected exactly one voc_prepared/ under {root}, found {found}")
+    logger.info("Prepared data found at %s", found[0])
+    return found[0]

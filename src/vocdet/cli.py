@@ -77,6 +77,13 @@ def main(argv: list[str] | None = None) -> int:
     errors.add_argument("--splits-dir", type=Path, default=Path("splits"))
     errors.add_argument("--out-dir", type=Path, required=True)
 
+    zs = sub.add_parser("zero-shot", help="E0b: evaluate a COCO-pretrained YOLO on VOC val.")
+    zs.add_argument("--config", type=Path, required=True)
+    zs.add_argument("--data-dir", default="auto", help="voc_prepared/ path, or 'auto' on Kaggle.")
+    zs.add_argument("--out-dir", type=Path, help="Run folder (default: runs/<run_id>).")
+    zs.add_argument("--limit", type=int, help="Only the first N images (local smoke test).")
+    zs.add_argument("--device", help="e.g. cpu or 0 (default: Ultralytics picks).")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -164,6 +171,17 @@ def main(argv: list[str] | None = None) -> int:
         gt = ground_truth_from_annotations(pd.read_parquet(args.annotations), image_ids)
         result = analyze(read_predictions(args.pred), gt, score_threshold=args.threshold)
         write_error_analysis(result, args.out_dir)
+        return 0
+    if args.command == "zero-shot":
+        from vocdet.config import ZeroShotConfig, load_job_config
+        from vocdet.data.prepare import find_prepared_dir
+        from vocdet.eval.zero_shot import run_zero_shot
+        from vocdet.utils.run_meta import resolve_run_id
+
+        cfg = load_job_config(args.config, ZeroShotConfig)
+        data_dir = find_prepared_dir() if args.data_dir == "auto" else Path(args.data_dir)
+        out_dir = args.out_dir or Path("runs") / resolve_run_id(cfg.exp_id)
+        run_zero_shot(cfg, args.config, data_dir, out_dir, limit=args.limit, device=args.device)
         return 0
     parser.print_help()
     return 0

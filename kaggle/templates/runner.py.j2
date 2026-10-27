@@ -5,6 +5,7 @@ command, and records what ran in /kaggle/working/<run_id>/kaggle_run.json. Only 
 saved by Kaggle, so everything the run produces must go into RUN_DIR.
 """
 
+import importlib.metadata
 import json
 import os
 import subprocess
@@ -19,6 +20,8 @@ RUN_ID = {{ run_id | tojson }}
 COMMAND = {{ command | tojson }}
 PIP_PACKAGES = {{ pip | tojson }}
 GPU_REQUESTED = {{ "True" if gpu else "False" }}
+# Preinstalled on Kaggle and built for its CUDA; installing other packages must leave them alone.
+GUARDED_PACKAGES = ("torch", "torchvision")
 
 RUN_DIR = Path("/kaggle/working") / RUN_ID
 # Outside /kaggle/working so the clone is not saved as kernel output.
@@ -28,6 +31,28 @@ REPO_DIR = Path("/tmp/vocdet-repo")
 def run(args: list[str], cwd: Path | None = None) -> None:
     print("+", " ".join(args), flush=True)
     subprocess.run(args, cwd=cwd, check=True)
+
+
+def guarded_versions() -> dict[str, str | None]:
+    """Versions of Kaggle's CUDA-matched packages, which pip must never replace."""
+    versions = {}
+    for name in GUARDED_PACKAGES:
+        try:
+            versions[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            versions[name] = None
+    return versions
+
+
+def install_without_touching_guarded(current: dict[str, str | None]) -> None:
+    """pip install the extra packages with the guarded ones pinned to their current versions.
+
+    With a constraints file pip cannot upgrade or downgrade torch/torchvision; if a package needed a
+    different version, the install fails here instead of silently breaking the CUDA build.
+    """
+    constraints = Path("/tmp/vocdet-constraints.txt")
+    constraints.write_text("".join(f"{n}=={v}\n" for n, v in current.items() if v is not None))
+    run([sys.executable, "-m", "pip", "install", "--quiet", "-c", str(constraints), *PIP_PACKAGES])
 
 
 def run_command_with_log(command: str, cwd: Path, log_path: Path) -> int:
@@ -59,8 +84,12 @@ def main() -> int:
     run(["git", "clone", "--quiet", REPO_URL, str(REPO_DIR)])
     run(["git", "checkout", "--quiet", COMMIT_SHA], cwd=REPO_DIR)
     run([sys.executable, "-m", "pip", "install", "--quiet", "--no-deps", "-e", str(REPO_DIR)])
+    guarded_before = guarded_versions()
     if PIP_PACKAGES:
-        run([sys.executable, "-m", "pip", "install", "--quiet", *PIP_PACKAGES])
+        install_without_touching_guarded(guarded_before)
+    guarded_after = guarded_versions()
+    if guarded_after != guarded_before:
+        raise SystemExit(f"pip changed preinstalled packages: {guarded_before} -> {guarded_after}")
 
     returncode = run_command_with_log(COMMAND, cwd=REPO_DIR, log_path=RUN_DIR / "command.log")
 
@@ -70,6 +99,8 @@ def main() -> int:
         "commit_sha": COMMIT_SHA,
         "command": COMMAND,
         "pip_packages": PIP_PACKAGES,
+        "guarded_versions_before": guarded_before,
+        "guarded_versions_after": guarded_after,
         "gpu_requested": GPU_REQUESTED,
         "python": sys.version,
         "started_utc": started.isoformat(),

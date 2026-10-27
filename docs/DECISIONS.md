@@ -236,3 +236,29 @@ order they are written, so the plan's references stay valid.
 - **Consequences:** counts depend on the threshold, so every report must state it. Ignored detections
   appear in the records but in no count or matrix cell.
 - **Pinned versions:** none added.
+
+---
+
+## ADR-010: Linux-only lock resolution and the ultralytics pin
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** adding `ultralytics==8.4.191` failed to lock. ultralytics requires
+  `numpy<2.0 or >2.3.4` **on macOS only**, which conflicts with our `numpy==2.1.3` pin (the Kaggle
+  version). uv resolves for every platform by default.
+- **Decision:**
+  - `[tool.uv] environments = ["sys_platform == 'linux'"]`. The lockfile covers Linux only, which is every
+    environment of this project: the dev machine, GitHub Actions, Kaggle, and the Docker Space.
+  - Pin `ultralytics==8.4.191`, the latest release on 2026-10-28, which includes the YOLO26 weights. On
+    Kaggle it is installed from the config's `kaggle.pip`, under a constraints file that pins the
+    preinstalled torch/torchvision. The runner records their versions before and after and fails on any
+    change (PLAN.md P4.1 criterion, implemented early because E0b is the first kernel to install
+    ultralytics).
+- **Alternatives considered:** bumping numpy past 2.3.4 to satisfy macOS. That would diverge from Kaggle's
+  numpy 2.1.3, which we keep on purpose (`--no-deps` installs mean Kaggle's versions run).
+- **Consequences:** `uv sync` on macOS is unsupported. That is acceptable for this project and stated in
+  the README (P8.2).
+- **Observation to follow up:** in 8.4.191, a loaded `yolo26n.pt` reports `Detect.end2end = False`, so
+  `predict()` runs NMS (iou 0.7). PLAN.md §1 describes YOLO26 as NMS-free. Phase 4 (training) and Phase 6
+  (export) must check how end-to-end mode is enabled before claiming NMS-free inference.
+- **Pinned versions:** runtime `ultralytics==8.4.191`, plus its resolved dependencies in `uv.lock`.
