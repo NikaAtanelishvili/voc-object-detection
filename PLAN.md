@@ -224,7 +224,7 @@ classic bug.
       check-added-large-files maxkb=1024), `Makefile` with all targets from CLAUDE.md (stubs allowed), and an empty
       package with `__init__.py` holding `__version__`.
       *Accept:\* `make setup && make check` passes on a clean clone.
-- [ ] **P0.3** CI: `.github/workflows/ci.yml` running on push and PR. Ubuntu, Python 3.11, uv, CPU-only torch
+- [x] **P0.3** CI: `.github/workflows/ci.yml` running on push and PR. Ubuntu, Python 3.11, uv, CPU-only torch
       (index-url for CPU wheels), then `make check`. Add a cache for uv.
       _Accept:_ green check on GitHub for the pushed commit.
 - [ ] **P0.4** Docs skeleton: `README.md` (title, one-paragraph summary, sections marked TODO),

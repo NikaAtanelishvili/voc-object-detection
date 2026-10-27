@@ -1,0 +1,26 @@
+# Lint + tests on every push and PR. CPU only: torch/torchvision resolve from the CPU wheel index
+# configured in pyproject.toml ([tool.uv.sources]), and tests never need the real dataset or weights.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Install uv (with cache)
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies from the lockfile
+        run: uv sync --locked
+
+      - name: make check
+        run: make check

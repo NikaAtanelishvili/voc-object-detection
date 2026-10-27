@@ -42,3 +42,14 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "N", "T20"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+
+# CPU-only PyTorch wheels (CI and the CPU deployment target never need CUDA; Kaggle uses its
+# preinstalled GPU build). `explicit` means only the packages mapped below use this index.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
