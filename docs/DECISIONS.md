@@ -262,3 +262,29 @@ order they are written, so the plan's references stay valid.
   `predict()` runs NMS (iou 0.7). PLAN.md §1 describes YOLO26 as NMS-free. Phase 4 (training) and Phase 6
   (export) must check how end-to-end mode is enabled before claiming NMS-free inference.
 - **Pinned versions:** runtime `ultralytics==8.4.191`, plus its resolved dependencies in `uv.lock`.
+
+---
+
+## ADR-011: Prepared-data location on Kaggle
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** training and evaluation kernels mount the prep kernel's output via `kernel_sources`. E0b's
+  first run (`E0b_20261028-0257_5978b2b`) searched `/kaggle/input` with
+  `glob("*/*/voc_prepared/annotations.parquet")` and found nothing. Two `env_check` kernels with the same
+  `kernel_sources`, one CPU (`env_check_20261028-0300_34ff675`) and one T4
+  (`env_check_20261028-0301_34ff675`), both show the data at
+  `/kaggle/input/vocdet-prepare-data/prepare_data_20261028-0208_7b7605e/voc_prepared/`, a path that
+  pattern matches. A local test of the same glob through a symlinked directory works on Python 3.12 and
+  3.13. **Root cause not found.**
+- **Decision:**
+  - No discovery. `configs/data/voc2012.yaml` holds the observed path and the prep run ID; a validator
+    checks that they agree. Commands take `--data-dir kaggle` to use it, or an explicit path.
+  - `wait_for_prepared_dir` waits up to 120 s for `annotations.parquet` (covering a mount that is still
+    attaching), then fails with a listing of the nearest existing parent folder.
+- **Alternatives considered:** keeping the glob with retries. A search whose failure we cannot explain is
+  worse than a fixed, verified path.
+- **Consequences:** a new prep run means updating the two lines in `configs/data/voc2012.yaml`. If E0b
+  fails again for the same reason, the work stops and the owner is asked (CLAUDE.md: two failed fix
+  attempts with an unclear root cause).
+- **Pinned versions:** none added.

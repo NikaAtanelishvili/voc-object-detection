@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal, TypeVar
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class KaggleSettings(BaseModel):
@@ -67,6 +67,21 @@ class ZeroShotConfig(JobConfig):
 
     seed: int = 42
     predict: PredictSettings
+
+
+class DataConfig(BaseModel):
+    """configs/data/voc2012.yaml: where kernels find the prepared data."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prep_run_id: str
+    kaggle_prepared_dir: str
+
+    @model_validator(mode="after")
+    def _path_matches_run(self) -> "DataConfig":
+        if self.prep_run_id not in self.kaggle_prepared_dir:
+            raise ValueError("kaggle_prepared_dir must contain prep_run_id (update both together)")
+        return self
 
 
 ConfigT = TypeVar("ConfigT", bound=BaseModel)

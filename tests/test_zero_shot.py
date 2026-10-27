@@ -1,7 +1,6 @@
-"""zero_shot.py end to end with a fake model, and find_prepared_dir."""
+"""zero_shot.py end to end with a fake model; data config and wait_for_prepared_dir."""
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -9,9 +8,9 @@ import yaml
 from PIL import Image
 
 from test_predict import FakeYOLO
-from vocdet.config import ZeroShotConfig, load_job_config
+from vocdet.config import DataConfig, ZeroShotConfig, load_job_config
 from vocdet.data.parse_voc import build_annotations
-from vocdet.data.prepare import find_prepared_dir
+from vocdet.data.prepare import wait_for_prepared_dir
 from vocdet.eval.zero_shot import run_zero_shot
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -47,12 +46,20 @@ def prepared(tmp_path: Path) -> tuple[Path, Path]:
     return data, splits
 
 
-def test_find_prepared_dir(prepared: tuple[Path, Path], tmp_path: Path) -> None:
+def test_wait_for_prepared_dir(prepared: tuple[Path, Path], tmp_path: Path) -> None:
     data, _ = prepared
-    assert find_prepared_dir(tmp_path / "input") == data
-    shutil.copytree(data, tmp_path / "input" / "other" / "voc_prepared")
-    with pytest.raises(FileNotFoundError, match="exactly one"):
-        find_prepared_dir(tmp_path / "input")
+    assert wait_for_prepared_dir(data, timeout_s=0) == data
+    with pytest.raises(FileNotFoundError, match="prep-kernel"):  # the listing names what exists
+        wait_for_prepared_dir(tmp_path / "input" / "x" / "voc_prepared", timeout_s=0)
+
+
+def test_data_config_is_consistent(tmp_path: Path) -> None:
+    cfg = load_job_config(REPO_ROOT / "configs" / "data" / "voc2012.yaml", DataConfig)
+    assert cfg.kaggle_prepared_dir.startswith("/kaggle/input/vocdet-prepare-data/")
+    bad = "prep_run_id: prepare_data_X\nkaggle_prepared_dir: /kaggle/input/old/voc_prepared\n"
+    (tmp_path / "d.yaml").write_text(bad)
+    with pytest.raises(ValueError, match="update both together"):
+        load_job_config(tmp_path / "d.yaml", DataConfig)
 
 
 def test_run_zero_shot_writes_run_artifacts(prepared: tuple[Path, Path], tmp_path: Path) -> None:

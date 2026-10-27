@@ -7,6 +7,7 @@ what training kernels mount via kernel_sources, so it holds everything they need
 import importlib.metadata
 import json
 import logging
+import time
 from pathlib import Path
 
 from vocdet.data.eda import run_eda
@@ -59,19 +60,22 @@ def prepare_all(
     logger.info("Prepared data written to %s", out_dir)
 
 
-def find_prepared_dir(root: Path = Path("/kaggle/input")) -> Path:
-    """Locate voc_prepared/ under a Kaggle input mount and log where it is.
+def wait_for_prepared_dir(path: Path, timeout_s: float = 120, poll_s: float = 10) -> Path:
+    """Return path once path/annotations.parquet exists; fail with a listing of what is there.
 
-    The mount layout of kernel_sources is not documented precisely, so we search the two plausible
-    depths instead of hard-coding a path (PLAN.md P1.9: the first GPU kernel logs the real path).
+    The path comes from configs/data/voc2012.yaml (observed on real kernels). The wait covers an
+    input mount that is still attaching when the command starts: E0b's first run found nothing under
+    /kaggle/input although the same metadata mounts correctly on CPU and GPU kernels (ADR-011).
     """
-    patterns = ("*/voc_prepared/annotations.parquet", "*/*/voc_prepared/annotations.parquet")
-    found = sorted({p.parent for pattern in patterns for p in root.glob(pattern)})
-    if len(found) != 1:
-        listing = sorted(str(p) for p in root.glob("*/*/*"))[:40]
-        raise FileNotFoundError(
-            f"Expected exactly one voc_prepared/ under {root}, found {found}. "
-            f"First entries 3 levels down: {listing}"
-        )
-    logger.info("Prepared data found at %s", found[0])
-    return found[0]
+    deadline = time.monotonic() + timeout_s
+    while not (path / "annotations.parquet").exists():
+        if time.monotonic() >= deadline:
+            root = next(parent for parent in path.parents if parent.exists())
+            listing = sorted(str(p) for p in root.glob("*/*"))[:40]
+            raise FileNotFoundError(
+                f"No prepared data at {path} after {timeout_s:.0f} s. Under {root}: {listing}"
+            )
+        logger.warning("Prepared data not at %s yet; waiting %.0f s", path, poll_s)
+        time.sleep(poll_s)
+    logger.info("Prepared data found at %s", path)
+    return path
