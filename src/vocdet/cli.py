@@ -82,9 +82,12 @@ def main(argv: list[str] | None = None) -> int:
     zs.add_argument(
         "--data-dir",
         default="kaggle",
-        help="voc_prepared/ path, or 'kaggle' (configs/data/voc2012.yaml).",
+        help="voc_prepared/ path, or 'kaggle' (search /kaggle/input for the configured prep run).",
     )
     zs.add_argument("--data-config", type=Path, default=Path("configs/data/voc2012.yaml"))
+    zs.add_argument(
+        "--resolve-only", action="store_true", help="Print the data path and exit (no prediction)."
+    )
     zs.add_argument("--out-dir", type=Path, help="Run folder (default: runs/<run_id>).")
     zs.add_argument("--limit", type=int, help="Only the first N images (local smoke test).")
     zs.add_argument("--device", help="e.g. cpu or 0 (default: Ultralytics picks).")
@@ -179,16 +182,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "zero-shot":
         from vocdet.config import DataConfig, ZeroShotConfig, load_job_config
-        from vocdet.data.prepare import wait_for_prepared_dir
+        from vocdet.data.prepare import find_prepared_dir
         from vocdet.eval.zero_shot import run_zero_shot
         from vocdet.utils.run_meta import resolve_run_id
 
         cfg = load_job_config(args.config, ZeroShotConfig)
         if args.data_dir == "kaggle":
             data_cfg = load_job_config(args.data_config, DataConfig)
-            data_dir = wait_for_prepared_dir(Path(data_cfg.kaggle_prepared_dir))
+            data_dir = find_prepared_dir(data_cfg.prep_run_id)
         else:
             data_dir = Path(args.data_dir)
+        if args.resolve_only:
+            print(f"Prepared data: {data_dir}")  # noqa: T201  (CLI output)
+            return 0
         out_dir = args.out_dir or Path("runs") / resolve_run_id(cfg.exp_id)
         run_zero_shot(cfg, args.config, data_dir, out_dir, limit=args.limit, device=args.device)
         return 0

@@ -1,6 +1,4 @@
-# Where the prepared data (P1.9 output) lives. Training and evaluation kernels attach the prep kernel via
-# kernel_sources and read this path. Verified 2026-10-28 by the env_check kernel on both a CPU and a T4
-# session (runs env_check_20261028-0300_34ff675 and env_check_20261028-0301_34ff675).
-# A new prep run changes the run-ID folder: update both lines below together.
+# Which prepared data (P1.9 output) kernels use. Kernels attach the prep kernel via kernel_sources and
+# search /kaggle/input recursively for <prep_run_id>/voc_prepared/annotations.parquet (ADR-011): the
+# mount depth differs between kernels, the run ID does not. A new prep run means updating this ID.
 prep_run_id: prepare_data_20261028-0208_7b7605e
-kaggle_prepared_dir: /kaggle/input/vocdet-prepare-data/prepare_data_20261028-0208_7b7605e/voc_prepared

@@ -267,24 +267,40 @@ order they are written, so the plan's references stay valid.
 
 ## ADR-011: Prepared-data location on Kaggle
 
-- **Date:** 2026-10-28
+- **Date:** 2026-10-28 (revised the same day after the root cause was found)
 - **Status:** accepted
-- **Context:** training and evaluation kernels mount the prep kernel's output via `kernel_sources`. E0b's
-  first run (`E0b_20261028-0257_5978b2b`) searched `/kaggle/input` with
-  `glob("*/*/voc_prepared/annotations.parquet")` and found nothing. Two `env_check` kernels with the same
-  `kernel_sources`, one CPU (`env_check_20261028-0300_34ff675`) and one T4
-  (`env_check_20261028-0301_34ff675`), both show the data at
-  `/kaggle/input/vocdet-prepare-data/prepare_data_20261028-0208_7b7605e/voc_prepared/`, a path that
-  pattern matches. A local test of the same glob through a symlinked directory works on Python 3.12 and
-  3.13. **Root cause not found.**
+- **Context:** training and evaluation kernels mount the prep kernel's output via `kernel_sources`. Two
+  E0b runs failed before predicting because they could not find it:
+  1. `E0b_20261028-0257_5978b2b` searched `/kaggle/input` with
+     `glob("*/*/voc_prepared/annotations.parquet")`, i.e. only two levels below the root, and found
+     nothing.
+  2. `E0b_20261028-0305_3fc1694` used the path seen by two `env_check` kernels (CPU and T4):
+     `/kaggle/input/vocdet-prepare-data/<prep_run_id>/voc_prepared/`. It waited 120 s, then listed
+     `/kaggle/input`: the only entry was `/kaggle/input/notebooks/nikaatanelishvili`.
+- **Root cause:** Kaggle mounts the same `kernel_sources` entry at **different depths in different
+  kernels**. The `vocdet-env-check` kernel sees `/kaggle/input/vocdet-prepare-data/...`. The
+  `vocdet-e0b` kernel sees `/kaggle/input/notebooks/<owner>/vocdet-prepare-data/...`, one level deeper.
+  The first glob was too shallow for the second layout, and the pinned path came from the first. Nothing
+  showed a *delayed* mount: the second run's listing showed the data mounted elsewhere, not missing. Why
+  the two kernels differ is not documented; we treat the depth as unknowable in advance.
 - **Decision:**
-  - No discovery. `configs/data/voc2012.yaml` holds the observed path and the prep run ID; a validator
-    checks that they agree. Commands take `--data-dir kaggle` to use it, or an explicit path.
-  - `wait_for_prepared_dir` waits up to 120 s for `annotations.parquet` (covering a mount that is still
-    attaching), then fails with a listing of the nearest existing parent folder.
-- **Alternatives considered:** keeping the glob with retries. A search whose failure we cannot explain is
-  worse than a fixed, verified path.
-- **Consequences:** a new prep run means updating the two lines in `configs/data/voc2012.yaml`. If E0b
-  fails again for the same reason, the work stops and the owner is asked (CLAUDE.md: two failed fix
-  attempts with an unclear root cause).
+  - `configs/data/voc2012.yaml` holds only `prep_run_id`, which pins the data version (validated format
+    `prepare_data_<yyyymmdd-hhmm>_<sha7>`).
+  - `data/prepare.py::find_prepared_dir(prep_run_id)` walks `/kaggle/input` **recursively** (`os.walk`,
+    following symlinks, with a loop guard). It never descends into `voc_prepared/` (~23k files). It looks
+    for `<prep_run_id>/voc_prepared/annotations.parquet`.
+  - It requires **exactly one** match. Zero or several matches fail immediately with a listing of the top
+    three levels of `/kaggle/input`. There is **no waiting**: no evidence of a delayed mount, so no retry
+    for it.
+  - Before any GPU launch of a kernel that reads prepared data, the same kernel runs once on **CPU** with
+    `--resolve-only` (via `kaggle_run.py --cpu --append-args "--resolve-only"`). That prints the resolved
+    path and exits, so a path problem costs no GPU time.
+- **Alternatives considered:**
+  - Listing both observed layouts as candidates: this breaks again if a third layout appears.
+  - A recursive search for any `voc_prepared/`: robust, but no longer tied to a data version.
+  - The fixed path plus a 120 s wait (the first revision of this ADR): it addressed a cause (a slow mount)
+    that the evidence did not support.
+- **Consequences:** startup cost is one directory walk that skips the image folders (seconds). A second
+  prep run with a different run ID can be attached side by side without ambiguity. Two copies of the same
+  run ID fail loudly instead of being picked arbitrarily.
 - **Pinned versions:** none added.

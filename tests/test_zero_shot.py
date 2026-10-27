@@ -1,6 +1,7 @@
-"""zero_shot.py end to end with a fake model; data config and wait_for_prepared_dir."""
+"""zero_shot.py end to end with a fake model; data config, find_prepared_dir, resolve-only."""
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -8,13 +9,15 @@ import yaml
 from PIL import Image
 
 from test_predict import FakeYOLO
+from vocdet.cli import main
 from vocdet.config import DataConfig, ZeroShotConfig, load_job_config
 from vocdet.data.parse_voc import build_annotations
-from vocdet.data.prepare import wait_for_prepared_dir
+from vocdet.data.prepare import find_prepared_dir
 from vocdet.eval.zero_shot import run_zero_shot
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VOC_FIXTURE = Path(__file__).parent / "fixtures" / "voc"
+RUN = "prepare_data_20261028-0208_7b7605e"
 
 
 def test_e0b_config_is_valid() -> None:
@@ -35,7 +38,8 @@ def test_zero_shot_config_rejects_test_split(tmp_path: Path) -> None:
 @pytest.fixture
 def prepared(tmp_path: Path) -> tuple[Path, Path]:
     """A minimal voc_prepared/ (parquet + val images) and a splits/ folder."""
-    data = tmp_path / "input" / "prep-kernel" / "voc_prepared"
+    # The deeper of the two mount layouts seen on Kaggle (ADR-011).
+    data = tmp_path / "input" / "notebooks" / "owner" / "vocdet-prepare-data" / RUN / "voc_prepared"
     build_annotations(VOC_FIXTURE, data / "annotations.parquet")
     (data / "yolo" / "images" / "val").mkdir(parents=True)
     Image.new("RGB", (400, 300)).save(data / "yolo" / "images" / "val" / "2008_000002.jpg")
@@ -46,20 +50,46 @@ def prepared(tmp_path: Path) -> tuple[Path, Path]:
     return data, splits
 
 
-def test_wait_for_prepared_dir(prepared: tuple[Path, Path], tmp_path: Path) -> None:
+def test_find_prepared_dir_at_any_depth(prepared: tuple[Path, Path], tmp_path: Path) -> None:
     data, _ = prepared
-    assert wait_for_prepared_dir(data, timeout_s=0) == data
-    with pytest.raises(FileNotFoundError, match="prep-kernel"):  # the listing names what exists
-        wait_for_prepared_dir(tmp_path / "input" / "x" / "voc_prepared", timeout_s=0)
+    assert find_prepared_dir(RUN, tmp_path / "input") == data
+    shallow_root = tmp_path / "input2"
+    shutil.copytree(data, shallow_root / "vocdet-prepare-data" / RUN / "voc_prepared")
+    assert find_prepared_dir(RUN, shallow_root).parts[-3:] == (
+        "vocdet-prepare-data",
+        RUN,
+        "voc_prepared",
+    )
 
 
-def test_data_config_is_consistent(tmp_path: Path) -> None:
+def test_find_prepared_dir_fails_fast_on_zero_or_many(
+    prepared: tuple[Path, Path], tmp_path: Path
+) -> None:
+    data, _ = prepared
+    other_run = "prepare_data_20991231-2359_0000000"
+    with pytest.raises(FileNotFoundError, match="found 0") as excinfo:
+        find_prepared_dir(other_run, tmp_path / "input")
+    assert "notebooks" in str(excinfo.value)  # the listing shows what is mounted
+    shutil.copytree(data, tmp_path / "input" / "vocdet-prepare-data" / RUN / "voc_prepared")
+    with pytest.raises(FileNotFoundError, match="found 2"):
+        find_prepared_dir(RUN, tmp_path / "input")
+
+
+def test_data_config(tmp_path: Path) -> None:
     cfg = load_job_config(REPO_ROOT / "configs" / "data" / "voc2012.yaml", DataConfig)
-    assert cfg.kaggle_prepared_dir.startswith("/kaggle/input/vocdet-prepare-data/")
-    bad = "prep_run_id: prepare_data_X\nkaggle_prepared_dir: /kaggle/input/old/voc_prepared\n"
-    (tmp_path / "d.yaml").write_text(bad)
-    with pytest.raises(ValueError, match="update both together"):
+    assert cfg.prep_run_id == RUN
+    (tmp_path / "d.yaml").write_text("prep_run_id: voc_prepared\n")
+    with pytest.raises(ValueError, match="prep_run_id"):
         load_job_config(tmp_path / "d.yaml", DataConfig)
+
+
+def test_resolve_only_prints_path_and_skips_prediction(
+    prepared: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    data, _ = prepared
+    config = str(REPO_ROOT / "configs" / "experiments" / "E0b.yaml")
+    assert main(["zero-shot", "--config", config, "--data-dir", str(data), "--resolve-only"]) == 0
+    assert f"Prepared data: {data}" in capsys.readouterr().out
 
 
 def test_run_zero_shot_writes_run_artifacts(prepared: tuple[Path, Path], tmp_path: Path) -> None:

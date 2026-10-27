@@ -7,7 +7,7 @@ what training kernels mount via kernel_sources, so it holds everything they need
 import importlib.metadata
 import json
 import logging
-import time
+import os
 from pathlib import Path
 
 from vocdet.data.eda import run_eda
@@ -60,22 +60,33 @@ def prepare_all(
     logger.info("Prepared data written to %s", out_dir)
 
 
-def wait_for_prepared_dir(path: Path, timeout_s: float = 120, poll_s: float = 10) -> Path:
-    """Return path once path/annotations.parquet exists; fail with a listing of what is there.
+def find_prepared_dir(prep_run_id: str, root: Path = Path("/kaggle/input")) -> Path:
+    """Return the one <prep_run_id>/voc_prepared/ folder under root that has annotations.parquet.
 
-    The path comes from configs/data/voc2012.yaml (observed on real kernels). The wait covers an
-    input mount that is still attaching when the command starts: E0b's first run found nothing under
-    /kaggle/input although the same metadata mounts correctly on CPU and GPU kernels (ADR-011).
+    Searched recursively because Kaggle mounts the same kernel_sources at different depths in
+    different kernels (/kaggle/input/<slug>/... vs /kaggle/input/notebooks/<owner>/<slug>/...,
+    ADR-011). Matching on the prep run ID keeps the data version pinned. Zero or several matches
+    fail immediately, listing what is there.
     """
-    deadline = time.monotonic() + timeout_s
-    while not (path / "annotations.parquet").exists():
-        if time.monotonic() >= deadline:
-            root = next(parent for parent in path.parents if parent.exists())
-            listing = sorted(str(p) for p in root.glob("*/*"))[:40]
-            raise FileNotFoundError(
-                f"No prepared data at {path} after {timeout_s:.0f} s. Under {root}: {listing}"
-            )
-        logger.warning("Prepared data not at %s yet; waiting %.0f s", path, poll_s)
-        time.sleep(poll_s)
-    logger.info("Prepared data found at %s", path)
-    return path
+    matches = []
+    seen = set()  # real paths already walked, so symlink loops cannot recurse forever
+    for dirpath, dirnames, _ in os.walk(root, followlinks=True):
+        real = os.path.realpath(dirpath)
+        if real in seen:
+            dirnames[:] = []
+            continue
+        seen.add(real)
+        here = Path(dirpath)
+        if here.name == prep_run_id and (here / "voc_prepared" / "annotations.parquet").is_file():
+            matches.append(here / "voc_prepared")
+        # Never descend into prepared data: ~23k images and labels, and nothing to find there.
+        dirnames[:] = [d for d in dirnames if d != "voc_prepared"]
+
+    if len(matches) != 1:
+        listing = sorted(str(p) for depth in ("*", "*/*", "*/*/*") for p in root.glob(depth))[:60]
+        raise FileNotFoundError(
+            f"Expected exactly one {prep_run_id}/voc_prepared/annotations.parquet under {root}, "
+            f"found {len(matches)}: {[str(m) for m in matches]}. Entries under {root}: {listing}"
+        )
+    logger.info("Prepared data found at %s", matches[0])
+    return matches[0]

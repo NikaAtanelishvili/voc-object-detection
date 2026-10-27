@@ -1,7 +1,7 @@
 """Push one config as a Kaggle kernel that runs the repo at the current, pushed commit.
 
 Usage: uv run python scripts/kaggle_run.py --config configs/kaggle/env_check.yaml [--gpu|--cpu]
-       [--sources slug1,slug2] [--dry-run]
+       [--sources slug1,slug2] [--dry-run] [--append-args "..."]
 
 Refuses a dirty tree or an unpushed HEAD (CLAUDE.md hard rule 6): the kernel clones the public repo
 at HEAD's SHA, so local-only changes would silently not run. The kernel folder is written to
@@ -109,9 +109,17 @@ def main() -> int:
     accel.add_argument("--cpu", dest="gpu", action="store_false")
     parser.add_argument("--sources", help="Comma-separated kernel slugs; overrides the config.")
     parser.add_argument("--dry-run", action="store_true", help="Write the kernel folder, no push.")
+    parser.add_argument(
+        "--append-args",
+        default="",
+        help="Extra arguments appended to the config's command, e.g. '--resolve-only' for a CPU "
+        "check of a GPU kernel. The full command is recorded in kaggle_run.json.",
+    )
     args = parser.parse_args()
 
     cfg = load_job_config(args.config)
+    if args.append_args:
+        cfg.kaggle.command = f"{cfg.kaggle.command} {args.append_args}"
     gpu = cfg.kaggle.gpu if args.gpu is None else args.gpu
     sources = args.sources.split(",") if args.sources else cfg.kaggle.sources
     username = os.environ.get("KAGGLE_USERNAME")
