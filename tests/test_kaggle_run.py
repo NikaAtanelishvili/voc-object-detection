@@ -13,10 +13,10 @@ from kaggle_run import (
     ensure_clean_and_pushed,
     https_repo_url,
     kernel_slug,
-    make_run_id,
     render_runner,
 )
 from vocdet.config import JobConfig
+from vocdet.utils.run_meta import make_run_id
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
 

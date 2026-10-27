@@ -22,6 +22,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from vocdet.config import JobConfig, load_job_config
+from vocdet.utils.run_meta import make_run_id
 
 logger = logging.getLogger("kaggle_run")
 
@@ -60,11 +61,6 @@ def https_repo_url(remote_url: str) -> str:
     if remote_url.startswith("https://"):
         return remote_url
     raise ValueError(f"Unsupported remote URL (expected GitHub SSH or HTTPS): {remote_url}")
-
-
-def make_run_id(exp_id: str, commit_sha: str, now: datetime) -> str:
-    """run_id = <exp_id>_<yyyymmdd-hhmm>_<sha7>, the contract from PLAN.md §2."""
-    return f"{exp_id}_{now:%Y%m%d-%H%M}_{commit_sha[:7]}"
 
 
 def kernel_slug(exp_id: str) -> str:
