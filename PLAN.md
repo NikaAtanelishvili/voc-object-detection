@@ -218,7 +218,7 @@ classic bug.
       locally, copy `CLAUDE.md` and `PLAN.md` into the root, then commit `chore: add agent plan` and push. The repo
       must be public so Kaggle kernels can `git clone` it without tokens. If the human wants it private until
       submission, stop and the agent will switch to the "code as Kaggle dataset" alternative (ADR).
-- [ ] **P0.2** Scaffold: `pyproject.toml` (uv, src layout, package `vocdet`, console script `vocdet`), ruff
+- [x] **P0.2** Scaffold: `pyproject.toml` (uv, src layout, package `vocdet`, console script `vocdet`), ruff
       config, pytest config, `.gitignore` (data/, runs/, .env, _.pt, _.onnx, *\_openvino_model/, kaggle/kernels/),
       `.env.example`, `.pre-commit-config.yaml` (ruff format, ruff lint, end-of-file, trailing whitespace,
       check-added-large-files maxkb=1024), `Makefile` with all targets from CLAUDE.md (stubs allowed), and an empty
