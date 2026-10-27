@@ -304,7 +304,7 @@ classic bug.
 
 ### Phase 2 — Evaluation harness, built before any training (Day 2)
 
-- [ ] **P2.1** `eval/schema.py`: `Prediction` / `GroundTruth` dataclasses plus JSON read/write. Boxes are
+- [x] **P2.1** `eval/schema.py`: `Prediction` / `GroundTruth` dataclasses plus JSON read/write. Boxes are
       absolute 0-based xyxy floats and labels are 0–19.
 - [ ] **P2.2** `eval/evaluator.py`: a wrapper over torchmetrics `MeanAveragePrecision(box_format="xyxy",
 iou_type="bbox", class_metrics=True)` that passes `iscrowd` from the difficult flag (verify the installed
