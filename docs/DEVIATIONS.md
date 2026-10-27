@@ -49,3 +49,19 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   first consumer.
 - **Impact:** later phases extend this module instead of creating it.
 - **ADR:** none
+
+### 2026-10-28 — P0.3 — CI matrix on Python 3.11 and 3.13
+- **Planned:** CI on Python 3.11.
+- **Actual:** CI runs `make check` on both 3.11 and 3.13 (`fail-fast: false`).
+- **Reason:** the `env_check` kernel showed that Kaggle runs Python 3.13.15 (`docs/ENVIRONMENT.md`), so code
+  that runs on Kaggle must be tested on 3.13. The owner approved this at the Phase 0 gate.
+- **Impact:** about 15 s more CI time per push. Code must pass on both versions.
+- **ADR:** none
+
+### 2026-10-28 — P0.3 — CI runner pinned to `ubuntu-24.04`
+- **Planned:** "Ubuntu" (implemented as `ubuntu-latest`).
+- **Actual:** `runs-on: ubuntu-24.04`.
+- **Reason:** GitHub warned that `ubuntu-latest` is migrating to Ubuntu 26. Pinning avoids a surprise image
+  change mid-project. The owner approved this at the Phase 0 gate.
+- **Impact:** none functionally. Revisit after the project ends.
+- **ADR:** none

@@ -8,14 +8,21 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pinned image: ubuntu-latest is migrating to Ubuntu 26, which would change CI mid-project.
+    runs-on: ubuntu-24.04
+    strategy:
+      # Report both versions even if one fails.
+      fail-fast: false
+      matrix:
+        # 3.11: PLAN.md baseline. 3.13: the Kaggle kernel runtime and the app Docker image.
+        python-version: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v7.0.1
 
       - name: Install uv (with cache)
         uses: astral-sh/setup-uv@v10.3.2
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
