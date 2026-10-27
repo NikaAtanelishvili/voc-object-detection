@@ -1,2 +1,28 @@
 # Secrets — never commit (CLAUDE.md hard rule 1)
 .env
+
+# Data, run artifacts, weights, exports (hard rule 2: live on Kaggle / HF Hub)
+data/
+runs/
+*.pt
+*.pth
+*.onnx
+*_openvino_model/
+kaggle/kernels/
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

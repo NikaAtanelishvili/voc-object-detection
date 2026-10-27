@@ -29,3 +29,23 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Reason:** a real `.env` with tokens already exists in the folder; it must be ignored before the first `git add`.
 - **Impact:** none.
 - **ADR:** none
+
+### 2026-10-28 — P0.6 — Extra folders `configs/kaggle/` and `results/env/`
+- **Planned:** `PLAN.md` §2 lists `configs/data/` and `configs/experiments/` only; smoke-kernel output only
+  feeds `docs/ENVIRONMENT.md`.
+- **Actual:** non-experiment kernel configs (starting with `env_check.yaml`) live in `configs/kaggle/`. The
+  smoke kernel's `env.json` and `kaggle_run.json` (≈3 KB total) are committed under `results/env/`.
+- **Reason:** `kaggle_run.py` needs a validated config for every kernel, and `env_check` is not an
+  experiment. Committing the raw JSON means every fact in `ENVIRONMENT.md` has a checked-in source
+  (hard rule 3 spirit), since `runs/` is gitignored.
+- **Impact:** none on experiments; two small extra folders.
+- **ADR:** none
+
+### 2026-10-28 — P0.6 — `src/vocdet/config.py` started early
+- **Planned:** `config.py` is in the layout but no task creates it before experiment configs exist.
+- **Actual:** created in P0.6 with `JobConfig`/`KaggleSettings` only (`extra="allow"` at the top level until
+  experiment sections get their own models).
+- **Reason:** CLAUDE.md requires YAML configs validated by pydantic, and `kaggle_run.py --config` is the
+  first consumer.
+- **Impact:** later phases extend this module instead of creating it.
+- **ADR:** none

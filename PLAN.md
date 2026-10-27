@@ -218,20 +218,20 @@ classic bug.
       locally, copy `CLAUDE.md` and `PLAN.md` into the root, then commit `chore: add agent plan` and push. The repo
       must be public so Kaggle kernels can `git clone` it without tokens. If the human wants it private until
       submission, stop and the agent will switch to the "code as Kaggle dataset" alternative (ADR).
-- [ ] **P0.2** Scaffold: `pyproject.toml` (uv, src layout, package `vocdet`, console script `vocdet`), ruff
+- [x] **P0.2** Scaffold: `pyproject.toml` (uv, src layout, package `vocdet`, console script `vocdet`), ruff
       config, pytest config, `.gitignore` (data/, runs/, .env, _.pt, _.onnx, *\_openvino_model/, kaggle/kernels/),
       `.env.example`, `.pre-commit-config.yaml` (ruff format, ruff lint, end-of-file, trailing whitespace,
       check-added-large-files maxkb=1024), `Makefile` with all targets from CLAUDE.md (stubs allowed), and an empty
       package with `__init__.py` holding `__version__`.
       *Accept:\* `make setup && make check` passes on a clean clone.
-- [ ] **P0.3** CI: `.github/workflows/ci.yml` running on push and PR. Ubuntu, Python 3.11, uv, CPU-only torch
+- [x] **P0.3** CI: `.github/workflows/ci.yml` running on push and PR. Ubuntu, Python 3.11, uv, CPU-only torch
       (index-url for CPU wheels), then `make check`. Add a cache for uv.
       _Accept:_ green check on GitHub for the pushed commit.
-- [ ] **P0.4** Docs skeleton: `README.md` (title, one-paragraph summary, sections marked TODO),
+- [x] **P0.4** Docs skeleton: `README.md` (title, one-paragraph summary, sections marked TODO),
       `docs/DECISIONS.md` with the ADR template and **ADR-001 Stack choice** (from §1), `docs/MANUAL_STEPS.md`,
       `docs/DEVIATIONS.md` (with the entry template), `docs/phase-reports/`,
       `docs/ENVIRONMENT.md`, and stub files in `reports/`.
-- [ ] **P0.5 [MANUAL]** Accounts and credentials:
+- [x] **P0.5 [MANUAL]** Accounts and credentials:
   1. Kaggle account → **phone verification** (required for GPU and internet in kernels).
   2. Kaggle → Settings → API → create a token. Install it as the Kaggle CLI expects (`~/.kaggle/kaggle.json`,
      chmod 600, or the env var method in the current Kaggle docs). Verify with `kaggle kernels list --mine`.
@@ -240,7 +240,7 @@ classic bug.
      `HF_USERNAME` in local `.env`.
   5. (Optional) W&B account → put `WANDB_API_KEY` in `.env`.
   6. `KAGGLE_USERNAME` in `.env`.
-- [ ] **P0.6** Kaggle plumbing. Write `kaggle/templates/runner.py.j2` and `scripts/kaggle_run.py`:
+- [x] **P0.6** Kaggle plumbing. Write `kaggle/templates/runner.py.j2` and `scripts/kaggle_run.py`:
   - `kaggle_run.py --config <yaml> [--gpu/--cpu] [--sources kernel-slug,...]` checks for a clean tree and a
     pushed HEAD, renders the runner script with the repo URL, SHA, and CLI command, writes
     `kernel-metadata.json` (`kernel_type: script`, `enable_gpu`, `enable_internet: true`, `kernel_sources` for
