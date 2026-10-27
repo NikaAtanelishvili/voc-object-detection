@@ -26,8 +26,7 @@ x86_64 wheels). Versions are re-checked and pinned when each package is added.
 | torch / torchvision (CPU) | 2.14.1 / 0.29.1 | >=3.10 | `cp313` wheels |
 
 Consequences: the app Docker image uses Python 3.13 (owner decision, `docs/DEVIATIONS.md`). onnxruntime
-needs ≥3.11, so when it is added (Phase 6) it gets a `python_version >= '3.11'` marker or the floor is raised
-via an ADR.
+needs ≥3.11, which the project floor now matches (ADR-005).
 
 ## Kaggle account
 
@@ -90,8 +89,8 @@ Source files: `results/env/kaggle_env_check.json` (from `scripts/env_check.py`) 
 
 Consequences:
 
-- **Python compatibility target:** the code must run on Kaggle's 3.13 and stay ≥3.10 compatible
-  (`requires-python = ">=3.10"`, ruff `target-version = "py310"`). CI currently tests 3.11 (PLAN.md P0.3).
+- **Python compatibility target:** the code must run on Kaggle's 3.13 and stay ≥3.11 compatible
+  (`requires-python = ">=3.11"`, ruff `target-version = "py311"`, ADR-005). CI tests 3.11 and 3.13.
 - **P100 is unusable**, confirmed: the torch build's arch list starts at sm_75, and the P100 is sm_60.
   `scripts/kaggle_run.py` always requests `NvidiaTeslaT4`.
 - The repo is installed with `--no-deps`, so Kaggle's own versions win (e.g. pydantic 2.13.5, not our

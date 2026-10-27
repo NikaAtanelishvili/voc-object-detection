@@ -85,3 +85,11 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   proven, not assumed.
 - **Impact:** a small change to `kaggle/templates/runner.py.j2` plus a test, done in P4.1.
 - **ADR:** none
+
+### 2026-10-28 — P1.1 — Python floor raised from 3.10 to 3.11
+- **Planned:** Python ≥3.10 (PLAN.md §1, CLAUDE.md code style, ADR-001).
+- **Actual:** `requires-python = ">=3.11"`, ruff target `py311`. PLAN.md §1 and CLAUDE.md are updated to match.
+- **Reason:** Kaggle runs 3.13, CI tests 3.11 and 3.13, and kaggle, pre-commit, and onnxruntime all need ≥3.11.
+  Owner decision.
+- **Impact:** removes the version markers from the dev dependencies. Python 3.10 is no longer supported.
+- **ADR:** [ADR-005](DECISIONS.md#adr-005-python-311-floor)

@@ -45,7 +45,7 @@ torchvision on Kaggle; install only what is missing there.
 
 | Layer               | Choice                                                                                                        | Why                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Language            | Python ≥3.10 (match Kaggle)                                                                                   | Kaggle runtime compatibility                                                                        |
+| Language            | Python ≥3.11 (Kaggle runs 3.13; ADR-005)                                                                      | Kaggle runtime compatibility                                                                        |
 | Env / packaging     | `uv` + `pyproject.toml` (src layout)                                                                          | Fast, lockfile-based, reproducible                                                                  |
 | DL framework        | PyTorch + torchvision                                                                                         | Standard CV ecosystem; Faster R-CNN reference implementation                                        |
 | One-stage detector  | Ultralytics **YOLO26** (n, s)                                                                                 | Current Ultralytics family (Jan 2026), NMS-free end-to-end inference, clean export to ONNX/OpenVINO |

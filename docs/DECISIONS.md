@@ -3,6 +3,10 @@
 One entry per design decision. Newest at the bottom. Never edit an accepted ADR's decision; supersede it
 with a new ADR and link both ways.
 
+Numbering: PLAN.md reserves **ADR-002** (split protocol, P1.4), **ADR-003** (model selection, P4.6), and
+**ADR-004** (deployment variant, P6.6) by name. Other ADRs take the next free number from ADR-005 on, in the
+order they are written, so the plan's references stay valid.
+
 ## Template
 
 ```
@@ -21,7 +25,7 @@ with a new ADR and link both ways.
 ## ADR-001: Stack choice
 
 - **Date:** 2026-10-28
-- **Status:** accepted
+- **Status:** accepted; the Python floor is superseded by [ADR-005](#adr-005-python-311-floor)
 - **Context:** 7-day deadline; training only on free Kaggle GPUs; deployment target is a 2-vCPU machine
   with no GPU; the owner must explain every line in an interview without AI tools.
 - **Decision:**
@@ -54,3 +58,20 @@ with a new ADR and link both ways.
   `kaggle==2.2.5 ; python_version >= '3.11'` (requires 3.11), `huggingface_hub==2.3.0`. P0.6:
   runtime `pydantic==2.14.1`, `pyyaml==6.0.3`; dev `jinja2==3.1.6` (renders the Kaggle runner). Runtime dependencies are pinned as they are
   added and listed in the ADR of the phase that adds them.
+
+---
+
+## ADR-005: Python 3.11 floor
+
+- **Date:** 2026-10-28
+- **Status:** accepted (supersedes the Python line of ADR-001)
+- **Context:** ADR-001 chose Python ≥3.10 "to match Kaggle". The `env_check` kernel showed Kaggle actually
+  runs Python 3.13.15. Several tools need ≥3.11: kaggle 2.2.5, pre-commit 4.7.0, and onnxruntime 1.31.1,
+  which the deployed app will need.
+- **Decision:** `requires-python = ">=3.11"`, ruff `target-version = "py311"`. CI tests 3.11 and 3.13. The
+  app Docker image uses 3.13. Owner decision on 2026-10-28.
+- **Alternatives considered:** keep 3.10 and put `python_version >= '3.11'` markers on every package that
+  needs it. That supports a version that no environment in this project uses, and it adds markers to explain.
+- **Consequences:** no environment-marker workarounds in `pyproject.toml`. Stdlib features from 3.11 are
+  allowed (e.g. `datetime.UTC`, `tarfile` extraction filters from 3.11.4).
+- **Pinned versions:** unchanged; the markers on `kaggle==2.2.5` and `pre-commit==4.7.0` were removed.
