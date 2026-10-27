@@ -8,7 +8,7 @@ Done on 2026-10-28 with `gh repo create voc-object-detection --public --source=.
 See `docs/DEVIATIONS.md`. Verify: `gh repo view NikaAtanelishvili/voc-object-detection --json visibility`
 prints `"visibility":"PUBLIC"`.
 
-## P0.5: Accounts and credentials (done by the owner before the session)
+## P0.5: Accounts and credentials (done by the owner before the session; verified 2026-10-28, see `docs/ENVIRONMENT.md`)
 
 1. Kaggle account with **phone verification** (needed for GPU and internet in kernels):
    <https://www.kaggle.com/settings> → Phone verification.

@@ -231,7 +231,7 @@ classic bug.
       `docs/DECISIONS.md` with the ADR template and **ADR-001 Stack choice** (from §1), `docs/MANUAL_STEPS.md`,
       `docs/DEVIATIONS.md` (with the entry template), `docs/phase-reports/`,
       `docs/ENVIRONMENT.md`, and stub files in `reports/`.
-- [ ] **P0.5 [MANUAL]** Accounts and credentials:
+- [x] **P0.5 [MANUAL]** Accounts and credentials:
   1. Kaggle account → **phone verification** (required for GPU and internet in kernels).
   2. Kaggle → Settings → API → create a token. Install it as the Kaggle CLI expects (`~/.kaggle/kaggle.json`,
      chmod 600, or the env var method in the current Kaggle docs). Verify with `kaggle kernels list --mine`.
