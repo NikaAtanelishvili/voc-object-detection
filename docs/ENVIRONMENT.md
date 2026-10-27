@@ -65,6 +65,9 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-10-28 | `env_check_20261028-0300_34ff675` (mount layout, CPU) | CPU only (no GPU quota) | 16 s | 0 h | 0.10 h |
 | 2026-10-28 | `env_check_20261028-0301_34ff675` (mount layout, T4) | GPU T4 x2 | 38 s | 0.05 h | 0.15 h |
 | 2026-10-28 | `E0b_20261028-0305_3fc1694` (failed: data not found) | GPU T4 x2 | 172 s | 0.05 h | 0.20 h |
+| 2026-10-28 | `E0b_20261028-0316_9f350f7` (`--resolve-only` path check) | CPU only (no GPU quota) | 50 s | 0 h | 0.20 h |
+| 2026-10-28 | `E0b_20261028-0318_9f350f7` (complete; superseded, rounded predictions JSON) | GPU T4 x2 | 110 s | 0.05 h | 0.25 h |
+| 2026-10-28 | `E0b_20261028-0321_fa7911f` (complete; **collected**) | GPU T4 x2 | 104 s | 0.05 h | 0.30 h |
 
 ## Kaggle kernel runtime
 
@@ -124,8 +127,10 @@ Consequences:
 - The parquet table, all three COCO JSONs, and every EDA table and summary are **byte-identical** to the
   local run, despite the pyarrow and matplotlib version differences. The only difference was the row
   order of `resolutions.csv`, which was fixed in `0415ff6`.
-- Training kernels mount the prepared data through `kernel_sources: [vocdet-prepare-data]`. The expected
-  path is `/kaggle/input/vocdet-prepare-data/prepare_data_20261028-0208_7b7605e/voc_prepared/`. The first
-  GPU kernel (P2.6) must log the actual mount path and record it in `configs/data/voc2012.yaml`.
+- Training kernels mount the prepared data through `kernel_sources: [vocdet-prepare-data]`. The mount
+  depth **differs between kernels**: `vocdet-env-check` sees `/kaggle/input/vocdet-prepare-data/...`,
+  while `vocdet-e0b` sees `/kaggle/input/notebooks/nikaatanelishvili/vocdet-prepare-data/...`. Code
+  therefore searches for `<prep_run_id>/voc_prepared/` recursively. The run ID is in
+  `configs/data/voc2012.yaml` (ADR-011).
 - `kaggle kernels output` lists outputs 20 per page and filters client-side. The prep kernel's ~23k
   outputs hit HTTP 429 until `kaggle_pull.py` switched to `--page-size 200` with one retry.

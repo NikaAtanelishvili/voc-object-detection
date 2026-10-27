@@ -320,7 +320,7 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
       highest-confidence FPs and the largest missed GTs per class.
 - [x] **P2.5** `utils/run_meta.py`, `utils/seed.py`, and `scripts/collect_results.py` implementing the run
       artifact contract from §2. _Tests:_ `collect_results` on a fake run directory.
-- [ ] **P2.6** Experiment **E0b**: zero-shot COCO YOLO26n on `val` with the COCO→VOC mapping (drop non-VOC
+- [x] **P2.6** Experiment **E0b**: zero-shot COCO YOLO26n on `val` with the COCO→VOC mapping (drop non-VOC
       classes). Run on Kaggle (GPU, ~10 min), pull it, and collect it. This validates the whole
       predict → eval → collect chain before any training.
 
