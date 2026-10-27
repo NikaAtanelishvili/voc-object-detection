@@ -306,7 +306,7 @@ classic bug.
 
 - [x] **P2.1** `eval/schema.py`: `Prediction` / `GroundTruth` dataclasses plus JSON read/write. Boxes are
       absolute 0-based xyxy floats and labels are 0–19.
-- [ ] **P2.2** `eval/evaluator.py`: a wrapper over torchmetrics `MeanAveragePrecision(box_format="xyxy",
+- [x] **P2.2** `eval/evaluator.py`: a wrapper over torchmetrics `MeanAveragePrecision(box_format="xyxy",
 iou_type="bbox", class_metrics=True)` that passes `iscrowd` from the difficult flag (verify the installed
       version accepts `iscrowd` in targets). Returns a flat dict: `map50, map50_95, map_small, map_medium,
 map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --split val`.

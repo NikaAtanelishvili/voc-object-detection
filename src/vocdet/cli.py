@@ -60,6 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     prepare.add_argument("--out-dir", type=Path, default=Path("data/voc_prepared"))
     prepare.add_argument("--mode", choices=["symlink", "copy"], default="copy")
 
+    ev = sub.add_parser("eval", help="Evaluate a predictions JSON on a split (the one evaluator).")
+    ev.add_argument("--pred", type=Path, required=True, help="Predictions JSON (eval/schema.py).")
+    ev.add_argument("--split", choices=["train", "val", "test"], default="val")
+    ev.add_argument("--annotations", type=Path, default=Path("data/processed/annotations.parquet"))
+    ev.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    ev.add_argument("--out", type=Path, help="Write metrics JSON here (default: print only).")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -119,6 +126,22 @@ def main(argv: list[str] | None = None) -> int:
 
         voc_dir = download_voc2012(args.download_root)
         prepare_all(voc_dir, args.splits_dir, args.out_dir, image_mode=args.mode)
+        return 0
+    if args.command == "eval":
+        import json
+
+        import pandas as pd
+
+        from vocdet.data.splits import load_splits
+        from vocdet.eval.evaluator import evaluate, write_metrics
+        from vocdet.eval.schema import ground_truth_from_annotations, read_predictions
+
+        image_ids = load_splits(args.splits_dir)[args.split]
+        gt = ground_truth_from_annotations(pd.read_parquet(args.annotations), image_ids)
+        metrics = evaluate(read_predictions(args.pred), gt)
+        if args.out:
+            write_metrics(metrics, args.out)
+        print(json.dumps(metrics, indent=2))  # noqa: T201  (CLI output)
         return 0
     parser.print_help()
     return 0

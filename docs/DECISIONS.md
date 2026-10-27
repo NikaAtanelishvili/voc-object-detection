@@ -171,3 +171,36 @@ order they are written, so the plan's references stay valid.
   (Kaggle's pyarrow version is not recorded yet; P1.9 checks it). Added later in Phase 1: `pycocotools==2.0.11` (P1.5, the same as
   Kaggle), `matplotlib==3.11.2` and `tabulate==0.10.0` (P1.8, EDA figures and markdown tables; Kaggle
   versions are checked in P1.9).
+
+---
+
+## ADR-008: Evaluator design
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** every model must be scored by one evaluator (PLAN.md §2, §4). torchmetrics 1.9.0 (the
+  Kaggle version) is the backend chosen in ADR-001. Its `class_metrics=True` reports per-class AP
+  averaged over IoU 0.50:0.95, but we want per-class AP at IoU 0.5.
+- **Decision:**
+  - `src/vocdet/eval/evaluator.py::evaluate(predictions, ground_truth)` is the only metric code.
+  - Instance 1, `MeanAveragePrecision(box_format="xyxy", iou_type="bbox", backend="pycocotools")` with the
+    default COCO thresholds, provides `map50`, `map50_95`, `map_small/medium/large` (over 0.50:0.95, COCO
+    convention), and `mar_100`.
+  - Instance 2, the same but with `iou_thresholds=[0.5]` and `class_metrics=True`, provides
+    `ap50_per_class`. A test checks that `map50` equals the mean of the per-class AP50 values.
+  - Difficult objects are passed as `iscrowd = 1` (ignore regions). Undefined metrics (torchmetrics `-1`,
+    e.g. a class with no ground truth) become `None` in JSON.
+  - Every ground-truth image must have a prediction entry, possibly empty. A missing or extra entry raises,
+    so an image dropped by a bug cannot silently inflate precision.
+- **Alternatives considered:**
+  - One instance with `extended_summary=True`, slicing the precision array at IoU 0.5 by hand. That avoids
+    computing twice but is harder to read and explain.
+  - Our own AP code: more to defend, and no gain over the reference implementation.
+- **Consequences:**
+  - Evaluation runs pycocotools twice (about 8 s for val, including imports).
+  - COCO 101-point interpolation, so numbers are not comparable to VOC all-point AP tables. Every report
+    states this.
+  - COCO "crowd" IoU is intersection over **detection** area, not union. Any detection lying mostly inside
+    a difficult box is ignored. This is slightly more lenient than VOC's standard-IoU rule for difficult
+    objects, and it applies identically to every model.
+- **Pinned versions:** runtime `torchmetrics==1.9.0` (the same as Kaggle).
