@@ -2,8 +2,8 @@
 .env
 
 # Data, run artifacts, weights, exports (hard rule 2: live on Kaggle / HF Hub)
-data/
-runs/
+/data/
+/runs/
 *.pt
 *.pth
 *.onnx
