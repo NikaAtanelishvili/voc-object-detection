@@ -206,3 +206,20 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   sources table is restored, and `uv.lock` again pins `torch==2.11.0+cpu` / `torchvision==0.26.0+cpu`;
   all tests pass on them. Lesson: after `uv remove`, check the `[tool.uv.sources]` table.
 - **ADR:** none
+
+### 2026-10-29 — P3.3 before P3.2; explicit LR function instead of `MultiStepLR`
+- **Planned:** task order P3.2 (training loop) → P3.3 (`predict_frcnn`). P3.2 uses `MultiStepLR` at
+  epochs [8, 11] plus a 500-iteration linear warm-up.
+- **Actual:**
+  - P3.3 is implemented and committed first, because the training loop's validation step calls
+    `predict_frcnn`.
+  - The learning rate comes from one explicit function, `lr_at(step, epoch)`: linear warm-up over the
+    first `warmup_iters` iterations, multiplied by 0.1 for each milestone epoch reached. This is the same
+    schedule as `MultiStepLR` (gamma 0.1) combined with a warm-up, without two interacting scheduler
+    objects.
+- **Reason:** a dependency between tasks. And chaining a per-iteration warm-up with a per-epoch
+  `MultiStepLR` has subtle ordering rules (each multiplies the current LR); one pure function is easier
+  to test, explain, and resume (no scheduler state to save).
+- **Impact:** identical schedule. Unit tests pin the LR at the warm-up start, at warm-up end, and after
+  each milestone.
+- **ADR:** ADR-012 (Faster R-CNN training loop)

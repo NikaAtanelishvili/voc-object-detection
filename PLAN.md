@@ -336,7 +336,7 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
       per-iteration loss CSV (total and the four component losses), val mAP every 2 epochs plus the last epoch,
       `best.pt` saved by val map50, `last.pt` saved every epoch, and **resume** from `last.pt` (Kaggle sessions can
       die). Seed everything and set `num_workers` from config.
-- [ ] **P3.3** `eval/predict.py::predict_frcnn` → `Prediction` (labels −1, score threshold 0.001, top 100).
+- [x] **P3.3** `eval/predict.py::predict_frcnn` → `Prediction` (labels −1, score threshold 0.001, top 100).
       _Test:_ label offset round trip using a fake model output.
 - [ ] **P3.4** E0a-frcnn smoke run on Kaggle: 64 train images, 1 epoch, val on 64 images. Record s/iter and
       update the §5 estimate for E1.
