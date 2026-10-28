@@ -191,3 +191,18 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   belong in `predict.py`.
 - **Impact:** P4.1 only has to confirm the guard on the training kernel.
 - **ADR:** [ADR-010](DECISIONS.md#adr-010-linux-only-lock-resolution-and-the-ultralytics-pin)
+
+### 2026-10-29 — P0.3 (found in P3.2) — CPU torch index mapping was lost for Phases 1–2
+- **Planned:** P0.3: CI and local installs use CPU-only torch/torchvision wheels, via
+  `[tool.uv.sources]` mapping them to the `pytorch-cpu` index.
+- **Actual:** commit `f2ded7a` (P1.1) ran `uv remove torch torchvision` to keep the Python-floor commit
+  separate. That command also deletes the packages' `[tool.uv.sources]` entries. The following `uv add`
+  then resolved CUDA builds from PyPI (`2.11.0` with `nvidia-*` dependencies). From `f2ded7a` until this
+  fix, CI and the local environment ran CUDA torch on CPU machines. It was noticed when the installed
+  version printed `2.11.0+cu130`.
+- **Reason:** a side effect of `uv remove` that was not checked at the time.
+- **Impact:** no effect on any result. Kaggle installs our package with `--no-deps` and uses its own
+  `2.11.0+cu128`, and E0b ran there. CI downloaded much larger wheels (cached after the first run). The
+  sources table is restored, and `uv.lock` again pins `torch==2.11.0+cpu` / `torchvision==0.26.0+cpu`;
+  all tests pass on them. Lesson: after `uv remove`, check the `[tool.uv.sources]` table.
+- **ADR:** none
