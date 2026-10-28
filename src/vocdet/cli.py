@@ -60,6 +60,38 @@ def main(argv: list[str] | None = None) -> int:
     prepare.add_argument("--out-dir", type=Path, default=Path("data/voc_prepared"))
     prepare.add_argument("--mode", choices=["symlink", "copy"], default="copy")
 
+    ev = sub.add_parser("eval", help="Evaluate a predictions JSON on a split (the one evaluator).")
+    ev.add_argument("--pred", type=Path, required=True, help="Predictions JSON (eval/schema.py).")
+    ev.add_argument("--split", choices=["train", "val", "test"], default="val")
+    ev.add_argument("--annotations", type=Path, default=Path("data/processed/annotations.parquet"))
+    ev.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    ev.add_argument("--out", type=Path, help="Write metrics JSON here (default: print only).")
+
+    errors = sub.add_parser("errors", help="TIDE-lite error analysis of a predictions JSON.")
+    errors.add_argument("--pred", type=Path, required=True)
+    errors.add_argument("--split", choices=["train", "val", "test"], default="val")
+    errors.add_argument("--threshold", type=float, default=0.5, help="Minimum detection score.")
+    errors.add_argument(
+        "--annotations", type=Path, default=Path("data/processed/annotations.parquet")
+    )
+    errors.add_argument("--splits-dir", type=Path, default=Path("splits"))
+    errors.add_argument("--out-dir", type=Path, required=True)
+
+    zs = sub.add_parser("zero-shot", help="E0b: evaluate a COCO-pretrained YOLO on VOC val.")
+    zs.add_argument("--config", type=Path, required=True)
+    zs.add_argument(
+        "--data-dir",
+        default="kaggle",
+        help="voc_prepared/ path, or 'kaggle' (search /kaggle/input for the configured prep run).",
+    )
+    zs.add_argument("--data-config", type=Path, default=Path("configs/data/voc2012.yaml"))
+    zs.add_argument(
+        "--resolve-only", action="store_true", help="Print the data path and exit (no prediction)."
+    )
+    zs.add_argument("--out-dir", type=Path, help="Run folder (default: runs/<run_id>).")
+    zs.add_argument("--limit", type=int, help="Only the first N images (local smoke test).")
+    zs.add_argument("--device", help="e.g. cpu or 0 (default: Ultralytics picks).")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -119,6 +151,52 @@ def main(argv: list[str] | None = None) -> int:
 
         voc_dir = download_voc2012(args.download_root)
         prepare_all(voc_dir, args.splits_dir, args.out_dir, image_mode=args.mode)
+        return 0
+    if args.command == "eval":
+        import json
+
+        import pandas as pd
+
+        from vocdet.data.splits import load_splits
+        from vocdet.eval.evaluator import evaluate, write_metrics
+        from vocdet.eval.schema import ground_truth_from_annotations, read_predictions
+
+        image_ids = load_splits(args.splits_dir)[args.split]
+        gt = ground_truth_from_annotations(pd.read_parquet(args.annotations), image_ids)
+        metrics = evaluate(read_predictions(args.pred), gt)
+        if args.out:
+            write_metrics(metrics, args.out)
+        print(json.dumps(metrics, indent=2))  # noqa: T201  (CLI output)
+        return 0
+    if args.command == "errors":
+        import pandas as pd
+
+        from vocdet.data.splits import load_splits
+        from vocdet.eval.error_analysis import analyze, write_error_analysis
+        from vocdet.eval.schema import ground_truth_from_annotations, read_predictions
+
+        image_ids = load_splits(args.splits_dir)[args.split]
+        gt = ground_truth_from_annotations(pd.read_parquet(args.annotations), image_ids)
+        result = analyze(read_predictions(args.pred), gt, score_threshold=args.threshold)
+        write_error_analysis(result, args.out_dir)
+        return 0
+    if args.command == "zero-shot":
+        from vocdet.config import DataConfig, ZeroShotConfig, load_job_config
+        from vocdet.data.prepare import find_prepared_dir
+        from vocdet.eval.zero_shot import run_zero_shot
+        from vocdet.utils.run_meta import resolve_run_id
+
+        cfg = load_job_config(args.config, ZeroShotConfig)
+        if args.data_dir == "kaggle":
+            data_cfg = load_job_config(args.data_config, DataConfig)
+            data_dir = find_prepared_dir(data_cfg.prep_run_id)
+        else:
+            data_dir = Path(args.data_dir)
+        if args.resolve_only:
+            print(f"Prepared data: {data_dir}")  # noqa: T201  (CLI output)
+            return 0
+        out_dir = args.out_dir or Path("runs") / resolve_run_id(cfg.exp_id)
+        run_zero_shot(cfg, args.config, data_dir, out_dir, limit=args.limit, device=args.device)
         return 0
     parser.print_help()
     return 0

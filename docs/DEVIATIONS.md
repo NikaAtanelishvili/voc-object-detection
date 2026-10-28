@@ -140,3 +140,54 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** training configs reference a path containing the prep run ID. A new prep run means updating
   `configs/data/voc2012.yaml`.
 - **ADR:** none
+
+### 2026-10-28 — P1.4/P1.9 — Full VOC2012 download and pipeline run locally
+- **Planned:** data preparation runs on a Kaggle CPU kernel (P1.9). Local work uses small fixtures.
+- **Actual:** the 2 GB trainval tar was also downloaded locally with `vocdet download` (MD5 verified from
+  the Oxford host). The full pipeline was then run locally: parse, splits, integrity, export (symlink
+  mode), EDA, and `vocdet prepare` into the scratchpad. Local disk use on 2026-10-28: `data/` = 3.9 GB
+  (`downloads/` 1.9 GB tar, `VOCdevkit/` 2.0 GB extracted, `prepared/` 96 MB, `processed/` 336 KB), plus
+  97 MB of symlinks and labels in the session scratchpad.
+- **Reason:** P1.4 needs the official `ImageSets/Main` lists, which exist only inside the tar. Running
+  locally also caught issues before spending a Kaggle session: it validated every real box, revealed the
+  2.67 MB sample figure, and gave a reference to compare the Kaggle outputs against byte for byte.
+- **Impact:** about 4 GB of local disk; `data/` is gitignored. It can be deleted with `rm -rf data/` and
+  rebuilt with `vocdet download` + `vocdet prepare --mode symlink`. The committed EDA outputs come from
+  the local run, and the Kaggle run reproduced them byte for byte (`docs/ENVIRONMENT.md`). The owner was
+  not told before the download; this entry was added at the owner's request at the Phase 1 gate.
+- **ADR:** none
+
+### 2026-10-28 — P5.1 — Bootstrap confidence intervals added (owner decision)
+- **Planned:** the P5.1 comparison tables report point estimates only.
+- **Actual:** P5.1 also reports a bootstrap 95% CI on val mAP50 (images resampled with replacement,
+  ~200 iterations, fixed seed). PLAN.md P5.1 is updated.
+- **Reason:** val has only 572 images, so differences between runs need an uncertainty estimate before
+  they are interpreted. Owner request at the Phase 1 gate.
+- **Impact:** extra CPU time in P5.1 (about 200 evaluator calls per run) and one more tested module. Runs
+  must keep `predictions_val.json`, which the run artifact contract already requires.
+- **ADR:** none (P5.1 may add one if the resampling scheme needs a decision)
+
+### 2026-10-28 — P4.1 — Writable YOLO dataset root on Kaggle: symlinked images, copied labels (owner decision)
+- **Planned:** P4.1 says nothing about where Ultralytics reads the dataset on Kaggle.
+- **Actual:** P4.1 now builds a writable dataset root in `/kaggle/working/`. It symlinks the images from
+  the read-only `/kaggle/input` mount, copies only the label files, and writes a fresh `voc_yolo.yaml`.
+  PLAN.md P4.1 is updated.
+- **Reason:** resolves Phase 1 open issue 2. The prep kernel's yaml points at its own `/kaggle/working`,
+  and Ultralytics writes label `.cache` files next to the labels, which fails on the read-only mount.
+  Symlinks avoid copying 2 GB of images per run.
+- **Impact:** a few seconds of setup per YOLO run. It must be verified that Ultralytics maps image paths to
+  label paths without resolving the symlinks.
+- **ADR:** none
+
+### 2026-10-28 — P2.6 — torch guard in the runner implemented before P4.1; new `eval/zero_shot.py`
+- **Planned:** the torch/torchvision install guard is a P4.1 acceptance criterion. The layout (§2) has no
+  zero-shot module.
+- **Actual:** `kaggle/templates/runner.py.j2` now installs `kaggle.pip` packages under a constraints file
+  that pins the preinstalled torch/torchvision. It records their versions before and after the install
+  (`kaggle_run.json`) and exits if they changed. The E0b flow lives in `src/vocdet/eval/zero_shot.py`,
+  exposed as `vocdet zero-shot`. `find_prepared_dir` (in `data/prepare.py`) locates the mounted data.
+- **Reason:** E0b is the first kernel that installs ultralytics, so the owner's requirement applies now.
+  The zero-shot flow (predict, evaluate, write the run artifacts) is not a model adapter, so it does not
+  belong in `predict.py`.
+- **Impact:** P4.1 only has to confirm the guard on the training kernel.
+- **ADR:** [ADR-010](DECISIONS.md#adr-010-linux-only-lock-resolution-and-the-ultralytics-pin)

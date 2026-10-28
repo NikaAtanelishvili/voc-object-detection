@@ -171,3 +171,136 @@ order they are written, so the plan's references stay valid.
   (Kaggle's pyarrow version is not recorded yet; P1.9 checks it). Added later in Phase 1: `pycocotools==2.0.11` (P1.5, the same as
   Kaggle), `matplotlib==3.11.2` and `tabulate==0.10.0` (P1.8, EDA figures and markdown tables; Kaggle
   versions are checked in P1.9).
+
+---
+
+## ADR-008: Evaluator design
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** every model must be scored by one evaluator (PLAN.md §2, §4). torchmetrics 1.9.0 (the
+  Kaggle version) is the backend chosen in ADR-001. Its `class_metrics=True` reports per-class AP
+  averaged over IoU 0.50:0.95, but we want per-class AP at IoU 0.5.
+- **Decision:**
+  - `src/vocdet/eval/evaluator.py::evaluate(predictions, ground_truth)` is the only metric code.
+  - Instance 1, `MeanAveragePrecision(box_format="xyxy", iou_type="bbox", backend="pycocotools")` with the
+    default COCO thresholds, provides `map50`, `map50_95`, `map_small/medium/large` (over 0.50:0.95, COCO
+    convention), and `mar_100`.
+  - Instance 2, the same but with `iou_thresholds=[0.5]` and `class_metrics=True`, provides
+    `ap50_per_class`. A test checks that `map50` equals the mean of the per-class AP50 values.
+  - Difficult objects are passed as `iscrowd = 1` (ignore regions). Undefined metrics (torchmetrics `-1`,
+    e.g. a class with no ground truth) become `None` in JSON.
+  - Every ground-truth image must have a prediction entry, possibly empty. A missing or extra entry raises,
+    so an image dropped by a bug cannot silently inflate precision.
+- **Alternatives considered:**
+  - One instance with `extended_summary=True`, slicing the precision array at IoU 0.5 by hand. That avoids
+    computing twice but is harder to read and explain.
+  - Our own AP code: more to defend, and no gain over the reference implementation.
+- **Consequences:**
+  - Evaluation runs pycocotools twice (about 8 s for val, including imports).
+  - COCO 101-point interpolation, so numbers are not comparable to VOC all-point AP tables. Every report
+    states this.
+  - COCO "crowd" IoU is intersection over **detection** area, not union. Any detection lying mostly inside
+    a difficult box is ignored. This is slightly more lenient than VOC's standard-IoU rule for difficult
+    objects, and it applies identically to every model.
+- **Pinned versions:** runtime `torchmetrics==1.9.0` (the same as Kaggle).
+
+---
+
+## ADR-009: TIDE-lite error analysis rules
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** PLAN.md §4 asks for our own error breakdown (Cls, Loc, Both, Dupe, Bkg, Miss) plus a
+  confusion matrix. The `tidecv` package is unmaintained (ADR-001), and the exact rules must be explainable.
+- **Decision:** `src/vocdet/eval/error_analysis.py`:
+  - **Score threshold.** Only detections with score ≥ a threshold are analysed. The CLI default is 0.5;
+    reports use each model's F1-optimal operating threshold on val. With the mAP setting (conf 0.001),
+    near-zero-score background hits would swamp the counts.
+  - **Matching.** Per image, detections in descending score order. Each is compared with the same-class
+    ground-truth box of highest IoU (difficult boxes included), following the VOC devkit. At IoU ≥ 0.5: a
+    difficult box makes it Ignored, an unmatched box makes it TP, and an already matched box makes it Dupe.
+  - **False-positive order:** Cls (IoU ≥ 0.5 with another class) → Loc (0.1 ≤ IoU < 0.5, same class) →
+    Both (0.1 ≤ IoU < 0.5, other class) → Bkg. Only non-difficult objects count here. This mirrors the
+    TIDE priority.
+  - **Miss** = every non-difficult object never matched as TP.
+  - **Confusion matrix:** 21×21, index 20 = background, rows = true class, columns = predicted class. Cls
+    goes to `[true, predicted]`; Loc, Both, Dupe, and Bkg go to `[background, predicted]`; Miss goes to
+    `[true, background]`. Cells count events, so row sums are not object counts.
+  - The IoU is computed by hand (`box_iou`, vectorised numpy).
+- **Alternatives considered:**
+  - Weighting errors by their mAP impact, as TIDE does: more faithful, but requires re-running the evaluator
+    per error type. Counts are enough to rank error sources and are easy to defend.
+  - Matching each detection to the best *unmatched* object instead of the VOC argmax rule: this differs only
+    in crowded scenes. We keep the devkit behaviour so our TP counts match VOC conventions.
+- **Consequences:** counts depend on the threshold, so every report must state it. Ignored detections
+  appear in the records but in no count or matrix cell.
+- **Pinned versions:** none added.
+
+---
+
+## ADR-010: Linux-only lock resolution and the ultralytics pin
+
+- **Date:** 2026-10-28
+- **Status:** accepted
+- **Context:** adding `ultralytics==8.4.191` failed to lock. ultralytics requires
+  `numpy<2.0 or >2.3.4` **on macOS only**, which conflicts with our `numpy==2.1.3` pin (the Kaggle
+  version). uv resolves for every platform by default.
+- **Decision:**
+  - `[tool.uv] environments = ["sys_platform == 'linux'"]`. The lockfile covers Linux only, which is every
+    environment of this project: the dev machine, GitHub Actions, Kaggle, and the Docker Space.
+  - Pin `ultralytics==8.4.191`, the latest release on 2026-10-28, which includes the YOLO26 weights. On
+    Kaggle it is installed from the config's `kaggle.pip`, under a constraints file that pins the
+    preinstalled torch/torchvision. The runner records their versions before and after and fails on any
+    change (PLAN.md P4.1 criterion, implemented early because E0b is the first kernel to install
+    ultralytics).
+- **Alternatives considered:** bumping numpy past 2.3.4 to satisfy macOS. That would diverge from Kaggle's
+  numpy 2.1.3, which we keep on purpose (`--no-deps` installs mean Kaggle's versions run).
+- **Consequences:** `uv sync` on macOS is unsupported. That is acceptable for this project and stated in
+  the README (P8.2).
+- **Observation to follow up:** in 8.4.191, a loaded `yolo26n.pt` reports `Detect.end2end = False`, so
+  `predict()` runs NMS (iou 0.7). PLAN.md §1 describes YOLO26 as NMS-free. Phase 4 (training) and Phase 6
+  (export) must check how end-to-end mode is enabled before claiming NMS-free inference.
+- **Pinned versions:** runtime `ultralytics==8.4.191`, plus its resolved dependencies in `uv.lock`.
+
+---
+
+## ADR-011: Prepared-data location on Kaggle
+
+- **Date:** 2026-10-28 (revised the same day after the root cause was found)
+- **Status:** accepted
+- **Context:** training and evaluation kernels mount the prep kernel's output via `kernel_sources`. Two
+  E0b runs failed before predicting because they could not find it:
+  1. `E0b_20261028-0257_5978b2b` searched `/kaggle/input` with
+     `glob("*/*/voc_prepared/annotations.parquet")`, i.e. only two levels below the root, and found
+     nothing.
+  2. `E0b_20261028-0305_3fc1694` used the path seen by two `env_check` kernels (CPU and T4):
+     `/kaggle/input/vocdet-prepare-data/<prep_run_id>/voc_prepared/`. It waited 120 s, then listed
+     `/kaggle/input`: the only entry was `/kaggle/input/notebooks/nikaatanelishvili`.
+- **Root cause:** Kaggle mounts the same `kernel_sources` entry at **different depths in different
+  kernels**. The `vocdet-env-check` kernel sees `/kaggle/input/vocdet-prepare-data/...`. The
+  `vocdet-e0b` kernel sees `/kaggle/input/notebooks/<owner>/vocdet-prepare-data/...`, one level deeper.
+  The first glob was too shallow for the second layout, and the pinned path came from the first. Nothing
+  showed a *delayed* mount: the second run's listing showed the data mounted elsewhere, not missing. Why
+  the two kernels differ is not documented; we treat the depth as unknowable in advance.
+- **Decision:**
+  - `configs/data/voc2012.yaml` holds only `prep_run_id`, which pins the data version (validated format
+    `prepare_data_<yyyymmdd-hhmm>_<sha7>`).
+  - `data/prepare.py::find_prepared_dir(prep_run_id)` walks `/kaggle/input` **recursively** (`os.walk`,
+    following symlinks, with a loop guard). It never descends into `voc_prepared/` (~23k files). It looks
+    for `<prep_run_id>/voc_prepared/annotations.parquet`.
+  - It requires **exactly one** match. Zero or several matches fail immediately with a listing of the top
+    three levels of `/kaggle/input`. There is **no waiting**: no evidence of a delayed mount, so no retry
+    for it.
+  - Before any GPU launch of a kernel that reads prepared data, the same kernel runs once on **CPU** with
+    `--resolve-only` (via `kaggle_run.py --cpu --append-args "--resolve-only"`). That prints the resolved
+    path and exits, so a path problem costs no GPU time.
+- **Alternatives considered:**
+  - Listing both observed layouts as candidates: this breaks again if a third layout appears.
+  - A recursive search for any `voc_prepared/`: robust, but no longer tied to a data version.
+  - The fixed path plus a 120 s wait (the first revision of this ADR): it addressed a cause (a slow mount)
+    that the evidence did not support.
+- **Consequences:** startup cost is one directory walk that skips the image folders (seconds). A second
+  prep run with a different run ID can be attached side by side without ambiguity. Two copies of the same
+  run ID fail loudly instead of being picked arbitrarily.
+- **Pinned versions:** none added.

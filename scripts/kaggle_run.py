@@ -1,7 +1,7 @@
 """Push one config as a Kaggle kernel that runs the repo at the current, pushed commit.
 
 Usage: uv run python scripts/kaggle_run.py --config configs/kaggle/env_check.yaml [--gpu|--cpu]
-       [--sources slug1,slug2] [--dry-run]
+       [--sources slug1,slug2] [--dry-run] [--append-args "..."]
 
 Refuses a dirty tree or an unpushed HEAD (CLAUDE.md hard rule 6): the kernel clones the public repo
 at HEAD's SHA, so local-only changes would silently not run. The kernel folder is written to
@@ -22,6 +22,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from vocdet.config import JobConfig, load_job_config
+from vocdet.utils.run_meta import make_run_id
 
 logger = logging.getLogger("kaggle_run")
 
@@ -60,11 +61,6 @@ def https_repo_url(remote_url: str) -> str:
     if remote_url.startswith("https://"):
         return remote_url
     raise ValueError(f"Unsupported remote URL (expected GitHub SSH or HTTPS): {remote_url}")
-
-
-def make_run_id(exp_id: str, commit_sha: str, now: datetime) -> str:
-    """run_id = <exp_id>_<yyyymmdd-hhmm>_<sha7>, the contract from PLAN.md §2."""
-    return f"{exp_id}_{now:%Y%m%d-%H%M}_{commit_sha[:7]}"
 
 
 def kernel_slug(exp_id: str) -> str:
@@ -113,9 +109,17 @@ def main() -> int:
     accel.add_argument("--cpu", dest="gpu", action="store_false")
     parser.add_argument("--sources", help="Comma-separated kernel slugs; overrides the config.")
     parser.add_argument("--dry-run", action="store_true", help="Write the kernel folder, no push.")
+    parser.add_argument(
+        "--append-args",
+        default="",
+        help="Extra arguments appended to the config's command. Use the = form for values that "
+        "start with dashes: --append-args=--resolve-only. Recorded in kaggle_run.json.",
+    )
     args = parser.parse_args()
 
     cfg = load_job_config(args.config)
+    if args.append_args:
+        cfg.kaggle.command = f"{cfg.kaggle.command} {args.append_args}"
     gpu = cfg.kaggle.gpu if args.gpu is None else args.gpu
     sources = args.sources.split(",") if args.sources else cfg.kaggle.sources
     username = os.environ.get("KAGGLE_USERNAME")

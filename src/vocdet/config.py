@@ -1,6 +1,7 @@
 """Pydantic models for the YAML configs, so a typo in a config fails before a GPU session starts."""
 
 from pathlib import Path
+from typing import Literal, TypeVar
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -47,12 +48,50 @@ class JobConfig(BaseModel):
     kaggle: KaggleSettings
 
 
-def load_job_config(path: Path) -> JobConfig:
-    """Read and validate a YAML config. Raises pydantic.ValidationError with the offending field."""
+class PredictSettings(BaseModel):
+    """Inference settings for an evaluation-only run (E0b zero-shot)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    weights: str = Field(description="Ultralytics weights name or path, e.g. yolo26n.pt.")
+    imgsz: int = 640
+    batch: int = 16
+    # Only val: the test split is reserved for scripts/final_test_eval.py (hard rule 4).
+    split: Literal["val"] = "val"
+
+
+class ZeroShotConfig(JobConfig):
+    """E0b: a pretrained COCO model on VOC val, no training. Unknown keys are errors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = 42
+    predict: PredictSettings
+
+
+class DataConfig(BaseModel):
+    """configs/data/voc2012.yaml: where kernels find the prepared data."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prep_run_id: str = Field(
+        pattern=r"^prepare_data_\d{8}-\d{4}_[0-9a-f]{7}$",
+        description="Run ID of the prep kernel whose output is mounted (pins the data version).",
+    )
+
+
+ConfigT = TypeVar("ConfigT", bound=BaseModel)
+
+
+def load_job_config(path: Path, model: type[ConfigT] = JobConfig) -> ConfigT:
+    """Read a YAML config and validate it against `model`.
+
+    Raises pydantic.ValidationError naming the offending field.
+    """
     with path.open(encoding="utf-8") as f:
         raw = yaml.safe_load(f)
     if not isinstance(raw, dict):
         raise ValueError(
             f"{path}: expected a YAML mapping at the top level, got {type(raw).__name__}"
         )
-    return JobConfig.model_validate(raw)
+    return model.model_validate(raw)

@@ -33,9 +33,11 @@ kaggle-run:
 kaggle-pull:
 	$(UV) python scripts/kaggle_pull.py $(RUN)
 
-# Stubs below fail loudly so a missing target is never mistaken for a successful one.
+# Copy finished runs' small artifacts into results/ and rebuild results/experiments.csv.
 results:
-	@echo "not implemented yet (P2.5)"; exit 1
+	$(UV) python scripts/collect_results.py
+
+# Stubs below fail loudly so a missing target is never mistaken for a successful one.
 
 report:
 	@echo "not implemented yet (P5.1)"; exit 1

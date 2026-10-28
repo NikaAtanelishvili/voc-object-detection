@@ -63,11 +63,15 @@ def command_output(args: list[str]) -> str | None:
     return subprocess.run(args, capture_output=True, text=True).stdout
 
 
-def kaggle_input_listing() -> list[str]:
+def kaggle_input_listing(max_depth: int = 4, max_entries: int = 200) -> list[str]:
+    """Directories (and a few files) under /kaggle/input, to see how kernel_sources are mounted."""
     root = Path("/kaggle/input")
     if not root.exists():
         return []
-    return sorted(str(p) for p in root.glob("*/*"))
+    entries = []
+    for depth in range(1, max_depth + 1):
+        entries.extend(sorted(str(p) for p in root.glob("/".join(["*"] * depth)))[:50])
+    return entries[:max_entries]
 
 
 def collect() -> dict:

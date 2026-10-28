@@ -304,23 +304,23 @@ classic bug.
 
 ### Phase 2 — Evaluation harness, built before any training (Day 2)
 
-- [ ] **P2.1** `eval/schema.py`: `Prediction` / `GroundTruth` dataclasses plus JSON read/write. Boxes are
+- [x] **P2.1** `eval/schema.py`: `Prediction` / `GroundTruth` dataclasses plus JSON read/write. Boxes are
       absolute 0-based xyxy floats and labels are 0–19.
-- [ ] **P2.2** `eval/evaluator.py`: a wrapper over torchmetrics `MeanAveragePrecision(box_format="xyxy",
+- [x] **P2.2** `eval/evaluator.py`: a wrapper over torchmetrics `MeanAveragePrecision(box_format="xyxy",
 iou_type="bbox", class_metrics=True)` that passes `iscrowd` from the difficult flag (verify the installed
       version accepts `iscrowd` in targets). Returns a flat dict: `map50, map50_95, map_small, map_medium,
 map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --split val`.
       _Tests (synthetic):_ perfect predictions → map50 = 1.0; no predictions → 0; a detection on a difficult GT
       leaves the score unchanged (ignore region); swapping a label lowers that class's AP.
-- [ ] **P2.3** `eval/error_analysis.py` (TIDE-lite from §4), own implementation with plain loops, IoU function
+- [x] **P2.3** `eval/error_analysis.py` (TIDE-lite from §4), own implementation with plain loops, IoU function
       written by hand (vectorized numpy allowed). Outputs counts per error type overall and per class, plus a
       20×20 (+background) confusion matrix.
       _Tests:_ one hand-built case for each error type.
-- [ ] **P2.4** `eval/visualize.py`: draw boxes with class and score. `failure_gallery()` saves the top-k
+- [x] **P2.4** `eval/visualize.py`: draw boxes with class and score. `failure_gallery()` saves the top-k
       highest-confidence FPs and the largest missed GTs per class.
-- [ ] **P2.5** `utils/run_meta.py`, `utils/seed.py`, and `scripts/collect_results.py` implementing the run
+- [x] **P2.5** `utils/run_meta.py`, `utils/seed.py`, and `scripts/collect_results.py` implementing the run
       artifact contract from §2. _Tests:_ `collect_results` on a fake run directory.
-- [ ] **P2.6** Experiment **E0b**: zero-shot COCO YOLO26n on `val` with the COCO→VOC mapping (drop non-VOC
+- [x] **P2.6** Experiment **E0b**: zero-shot COCO YOLO26n on `val` with the COCO→VOC mapping (drop non-VOC
       classes). Run on Kaggle (GPU, ~10 min), pull it, and collect it. This validates the whole
       predict → eval → collect chain before any training.
 
@@ -355,6 +355,10 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
       _Added (owner, 2026-10-28):_ installing the pinned ultralytics on Kaggle must not change the
       preinstalled torch/torchvision. The runner records their versions before and after the install and
       fails the run if they differ.
+      _Added (owner, 2026-10-28):_ the prepared data is mounted read-only under `/kaggle/input/`. Build a
+      writable dataset root in `/kaggle/working/`: **symlink the images** (no 2 GB copy) and **copy only the
+      label files**, so Ultralytics can write its label `.cache` next to them. Write a fresh `voc_yolo.yaml`
+      whose `path` points at that root. Verify Ultralytics finds the labels through the symlinked image paths.
 - [ ] **P4.2** `predict_yolo` adapter → `Prediction` (conf 0.001, max_det 100). Also record Ultralytics' own
       `model.val()` mAP50 on val as a **cross-check**. Explain any difference (interpolation, difficult handling) in
       an ADR. Our evaluator is authoritative.
@@ -372,6 +376,12 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
 - [ ] **P5.1** `scripts/build_report_tables.py` generates markdown tables from `results/` (experiment
       comparison, per-class AP, size-bucket AP, error-type breakdown) plus figures (val mAP-vs-epoch curves,
       speed/accuracy scatter, per-class AP bars, confusion matrix heatmap).
+      _Added (owner, 2026-10-28):_ val has only 572 images, so the experiment comparison table reports a
+      **bootstrap 95% confidence interval on val mAP50** for every run. Resample val **images** with
+      replacement (~200 iterations, fixed seed), re-evaluate each resample with the same evaluator from the
+      saved `predictions_val.json`, and take the 2.5th/97.5th percentiles. The CIs are written to `results/`
+      by a script, never typed. _Tests:_ identical predictions give a zero-width CI; a fixed seed gives
+      identical intervals on reruns.
 - [ ] **P5.2** `scripts/final_test_eval.py`: evaluates final models E1, E2, E3, and the selected configuration
       on the **test** split exactly once, writes `results/test_metrics.csv`, and refuses to overwrite an existing
       entry without `--force-rerun-with-reason "<text>"` (the reason is logged).

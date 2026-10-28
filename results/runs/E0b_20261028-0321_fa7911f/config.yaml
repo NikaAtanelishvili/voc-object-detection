@@ -1,0 +1,14 @@
+# E0b (PLAN.md §5): COCO-pretrained YOLO26n on VOC val, no training. How much does fine-tuning add over
+# pretraining alone? Detections of the 60 non-VOC COCO classes are dropped (eval/predict.py).
+exp_id: E0b
+seed: 42
+predict:
+  weights: yolo26n.pt
+  imgsz: 640
+  batch: 16
+  split: val
+kaggle:
+  command: vocdet zero-shot --config configs/experiments/E0b.yaml --data-dir kaggle --out-dir {run_dir}
+  gpu: true
+  pip: ["ultralytics==8.4.191"]
+  sources: ["vocdet-prepare-data"]

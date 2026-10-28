@@ -1,0 +1,4 @@
+# Which prepared data (P1.9 output) kernels use. Kernels attach the prep kernel via kernel_sources and
+# search /kaggle/input recursively for <prep_run_id>/voc_prepared/annotations.parquet (ADR-011): the
+# mount depth differs between kernels, the run ID does not. A new prep run means updating this ID.
+prep_run_id: prepare_data_20261028-0208_7b7605e
