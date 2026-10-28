@@ -328,7 +328,7 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
 
 ### Phase 3 — Faster R-CNN baseline (Day 2 evening → Day 3)
 
-- [ ] **P3.1** `models/frcnn.py`: `build_frcnn(num_classes=21, pretrained=True)` loading torchvision COCO
+- [x] **P3.1** `models/frcnn.py`: `build_frcnn(num_classes=21, pretrained=True)` loading torchvision COCO
       weights and replacing `roi_heads.box_predictor` with a `FastRCNNPredictor(in_features, 21)`. Set
       `min_size`/`max_size` from config (600/1000). Log parameter counts.
 - [ ] **P3.2** `train/train_frcnn.py`: explicit training loop with SGD (momentum 0.9, wd 1e-4), linear warm-up
