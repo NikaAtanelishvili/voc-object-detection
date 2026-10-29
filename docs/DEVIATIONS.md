@@ -282,3 +282,15 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   `experiments.csv`, `results/runs/` and `reports/EXPERIMENTS.md` byte for byte. From Phase 4 on, every
   accepted run gets a manifest line in its `exp` commit.
 - **ADR:** none (ADR-012 step 6 updated)
+
+### 2026-10-29 — before P4.1: HF model repo created early (private) for the E1 weight backup
+- **Planned:** P7.5 [MANUAL]: the owner creates the public model repo `<user>/vocdet-models`, and weights
+  are uploaded there in Phase 7.
+- **Actual:** at the owner's request, the agent created `nikaata007/vocdet-models` as a **private** repo
+  with the existing `HF_TOKEN`, and uploaded `E1_20261029-0602_da4e489/weights/best.pt`. The sha256 of
+  the upload matches the local copy (`docs/ENVIRONMENT.md` → Weight backups).
+- **Reason:** the E1 weights existed only in the `vocdet-e1` kernel output, which a rerun would replace,
+  and P5.2 needs them.
+- **Impact:** P7.5 shrinks to switching the repo to public and adding the model card. From now on, every
+  run used later is backed up before its kernel is relaunched.
+- **ADR:** none

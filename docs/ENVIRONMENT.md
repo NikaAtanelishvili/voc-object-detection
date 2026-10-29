@@ -76,6 +76,17 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-10-29 | `E1_20261029-0601_da4e489` (`--resolve-only` path check) | CPU only (no GPU quota) | 48 s | 0 h | 0.50 h |
 | 2026-10-29 | `E1_20261029-0602_da4e489` (complete; **collected**) | GPU T4 x2 | 3023 s | 0.85 h | 1.35 h |
 
+### Weight backups
+
+A kernel's output is replaced when that kernel runs again, and pull patterns skip weights. So the
+`best.pt` of every run used later is copied off Kaggle before its kernel is relaunched. **Never rerun a
+kernel whose weights are not listed here.** Hub repo: `nikaata007/vocdet-models` (private until P7.5),
+path `<run_id>/weights/best.pt`, with a second copy in `runs/<run_id>/weights/` (gitignored).
+
+| Date | Run | Checkpoint | sha256 (local = Hub LFS) | Hub commit | Check |
+|---|---|---|---|---|---|
+| 2026-10-29 | `E1_20261029-0602_da4e489` | `best.pt`, epoch 11, 76 395 617 B | `faa404c82337f5f75ce91c63ecf014bac8345f20fa06b66ed9254951e3eefe86` | `b6b13d6` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
+
 ## Kaggle kernel runtime
 
 Recorded 2026-10-28 by the `env_check` smoke kernel (`configs/kaggle/env_check.yaml`, commit `d4cbed4`).
