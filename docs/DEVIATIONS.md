@@ -253,3 +253,14 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   E1's steps are slow and the rest are fast. A shape replay confirmed this (64/64 steps predicted). The
   §5 estimate therefore comes from `scripts/estimate_frcnn_time.py` → `results/estimates/E1.json`,
   not from `median_iter_s` alone.
+
+### 2026-10-29 — P3.6: the experiment table of `build_report_tables.py` written before P5.1
+- **Planned:** `scripts/build_report_tables.py` is created in P5.1. P3.6 already asks for "generated
+  tables" in `reports/EXPERIMENTS.md`.
+- **Actual:** P3.6 creates the script with one table, the experiment comparison from
+  `results/experiments.csv`, written between `<!-- BEGIN/END:experiments -->` markers, and wires up
+  `make report`. P5.1 adds the per-class, size-bucket, and error tables, the bootstrap CIs, and the figures
+  to the same script.
+- **Reason:** P3.6 cannot meet its "generated tables, no typed numbers" criterion without the generator.
+- **Impact:** P5.1 shrinks by one table. No change to any result.
+- **ADR:** none
