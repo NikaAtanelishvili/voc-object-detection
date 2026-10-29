@@ -34,9 +34,9 @@ from vocdet.utils.seed import seed_everything
 
 logger = logging.getLogger(__name__)
 
-# A larger map50 gap between Ultralytics and our difficult-removed score than the remaining
-# differences explain (ADR-013) points at an adapter bug: class map, box scaling, or image order.
-CROSSCHECK_TOLERANCE = 0.02
+# Ultralytics' val pipeline scores ~2 points above its own predict() (measured, ADR-013); an adapter
+# bug (class map, box scaling, image IDs) costs tens of points. A gap above this is checked by hand.
+CROSSCHECK_TOLERANCE = 0.05
 IO_THREADS = 32  # dataset root build: threads waiting on the mount, not computing
 
 

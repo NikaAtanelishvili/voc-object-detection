@@ -415,23 +415,33 @@ only reloads and re-evaluates).
       scored by our evaluator against ground truth with the difficult objects removed.
   - The authoritative numbers stay in `metrics_val.json` (predict_yolo → evaluate, difficult objects
     as ignore regions).
-  - A gap of more than `CROSSCHECK_TOLERANCE` (0.02 map50) between `ultralytics_map50` and
+  - A gap of more than `CROSSCHECK_TOLERANCE` (0.05 map50) between `ultralytics_map50` and
     `ours_map50_difficult_removed` logs a warning. The run is then checked by hand before its numbers
-    are used.
-- **Why the two scores differ** (code read in Ultralytics 8.4.191 and ADR-008):
+    are used. The first value, 0.02, fired on a healthy run (see the measured breakdown below). An
+    adapter bug (a shifted class map, unscaled boxes, mixed-up image IDs) costs tens of points, so 0.05
+    still catches it.
+- **Why the two scores differ.** Candidate causes were read in the Ultralytics 8.4.191 code and ADR-008:
   1. **Difficult objects.** The YOLO labels leave them out (`data/export_yolo.py`), so for Ultralytics a
      detection on one is a false positive. Our evaluator passes them as `iscrowd`, so it ignores such a
-     detection. This makes our map50 higher. It is the one effect the extra score isolates exactly:
-     `metrics_val.json map50 − ours_map50_difficult_removed`.
-  2. **Detection cap.** We keep the top 100 per image (PLAN.md §4). Ultralytics val keeps up to 300.
-     The extra low-score detections can only add recall, so this effect is small and in Ultralytics'
-     favour.
-  3. **Inference batching.** Val uses rectangular batches padded to the batch's largest shape, while
-     `predict` letterboxes each image on its own. The boxes differ slightly.
-  4. **Matching and AP.** Both match greedily: within each image, detections are taken in descending
-     confidence, and each claims the best unclaimed target of its class (`BaseValidator.
-     match_predictions`, default non-scipy path). Both interpolate 101 points. The remaining
-     differences are small: how each builds the per-class precision envelope, and how ties are broken.
+     detection. Every run isolates this effect: `metrics_val.json map50 − ours_map50_difficult_removed`.
+  2. **AP metric.** Ultralytics linearly interpolates the precision envelope and integrates with the
+     trapezoid rule (`utils/metrics.py::compute_ap`). pycocotools averages step values at 101 recall
+     points. Matching is the same greedy, confidence-ordered rule in both
+     (`BaseValidator.match_predictions`, default path).
+  3. **Detection cap.** We keep 100 per image (PLAN.md §4); Ultralytics val keeps up to 300.
+  4. **Inference path.** `model.val()` loads images through its dataloader into rectangular batches,
+     with half-stride padding. `predict()` letterboxes each image on its own.
+- **Measured** by `scripts/diagnose_crosscheck_gap.py` on the yolo26n timing run's `best.pt` (CPU, which
+  reproduces the Kaggle numbers). Output: `results/diagnostics/crosscheck_gap_E0a_yolo_timing_n_20261029-1539_860a6b4.json`.
+  - Ultralytics' metric applied to *our* predictions lands very close to our evaluator, and keeping 300
+    detections barely moves it. So effects 2 and 3 are small, and our adapter and evaluator agree with
+    Ultralytics on the same boxes.
+  - Rect batch padding (batch 16 vs 1) is also small.
+  - Nearly the whole gap is effect 4: Ultralytics' val pipeline scores higher than Ultralytics' own
+    `predict()` on the same weights.
+  - We keep scoring the `predict()` path, because it is what the deployed service runs (Phase 7) and
+    how Faster R-CNN is scored. The val-pipeline gain is a property of Ultralytics' evaluation code,
+    not of the model we ship.
 - **Alternatives considered:**
   - Training YOLO labels with difficult objects included. That changes the training data relative to
     Faster R-CNN, which never trains on difficult objects (`data/dataset.py`), so it was rejected.
@@ -439,6 +449,6 @@ only reloads and re-evaluates).
     different code, and the comparison would be meaningless (ADR-008).
 - **Consequences:**
   - Each YOLO run costs one extra val pass (seconds on a T4).
-  - The measured size of effect 1 and of the remaining gap (2–4) is quoted from E2's `run_meta.json` in
-    `reports/EXPERIMENTS.md` once E2 is collected (P4.4). It is never typed into this ADR.
+  - Effect 1 and the remaining gap are recorded per run in `run_meta.json`. They are quoted from there,
+    or from the diagnostics JSON, by generated tables, never typed into this ADR.
 - **Pinned versions:** none added (`ultralytics==8.4.191`, ADR-010).
