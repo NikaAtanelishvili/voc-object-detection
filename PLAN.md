@@ -192,17 +192,24 @@ Epoch numbers are starting points. The smoke runs (P3.4/P4.3) measure seconds pe
 | E0a | both                           | 64 images, 1 epoch                                                        | Does the pipeline work end to end? Speed calibration  | 0.3                     |
 | E0b | YOLO26n COCO, no training      | COCO→VOC class mapping, zero-shot                                         | How much does fine-tuning add over pretraining alone? | 0.2                     |
 | E1  | Faster R-CNN MobileNetV3-L FPN | 12 epochs, SGD lr 0.01, bs 8, short side 600, AMP                         | Two-stage baseline                                    | 1.0 ¹                   |
-| E2  | YOLO26n                        | 50 epochs, imgsz 640, patience 15, default aug                            | One-stage, smallest                                   | 1.5                     |
-| E3  | YOLO26s                        | same as E2                                                                | Capacity vs speed                                     | 3.0                     |
-| E4  | YOLO26n                        | minimal aug: mosaic=0, mixup=0, hsv=0, scale=0, translate=0 (fliplr kept) | What does augmentation buy?                           | 1.5                     |
+| E2  | YOLO26n                        | 50 epochs, imgsz 640, patience 15, default aug                            | One-stage, smallest                                   | 1.2 ²                   |
+| E3  | YOLO26s                        | same as E2                                                                | Capacity vs speed                                     | 1.4 ²                   |
+| E4  | YOLO26n                        | minimal aug: mosaic=0, mixup=0, hsv=0, scale=0, translate=0 (fliplr kept) | What does augmentation buy?                           | 1.2 ²                   |
 | E5  | YOLO26n                        | freeze=10 (backbone frozen)                                               | Full fine-tune vs frozen backbone (cost/accuracy)     | 1.0                     |
 | O\* | best model                     | export + GPU FP16/TensorRT bench (optional)                               | Optimization                                          | 0.5                     |
 | —   | buffer                         | reruns / failures / seed 43                                               |                                                       | 5.0                     |
-|     |                                |                                                                           | **Total budget**                                      | **~14.0 of ~30 weekly** |
+|     |                                |                                                                           | **Total budget**                                      | **~11.8 of ~30 weekly** |
 
 ¹ Updated in P3.4 (was 2.5). Training time comes from `results/estimates/E1.json`
 (`scripts/estimate_frcnn_time.py`: replayed batch shapes priced with the timing run
 `E0a_frcnn_timing_20261029-0552_2dd6526`), rounded up to cover validation and kernel start-up.
+
+² Updated in P4.3 (were E2 1.5, E3 3.0, E4 1.5). Upper bounds from `scripts/estimate_yolo_time.py`
+(3 full-data epochs per model; early stopping can only shorten a run): `results/estimates/E2.json`
+from `E0a_yolo_timing_n_20261029-1539_860a6b4` and `results/estimates/E3.json` from
+`E0a_yolo_timing_s_20261029-1749_631ad4c`, rounded up. The 26s timing session found the input mount
+warm, so E3 adds the 26n session's extra start-up (cold mount, about 0.25 h). E4 trains the same model
+for the same epochs as E2, with lighter augmentation, so E2's figure covers it.
 
 The weekly Kaggle GPU quota is shown in Kaggle account settings (commonly about 30 h, but it floats). The human
 checks it in P0.5 and writes it into `docs/ENVIRONMENT.md`. Run data preparation and EDA on **CPU** kernels so
@@ -366,7 +373,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
 - [x] **P4.2** `predict_yolo` adapter → `Prediction` (conf 0.001, max_det 100). Also record Ultralytics' own
       `model.val()` mAP50 on val as a **cross-check**. Explain any difference (interpolation, difficult handling) in
       an ADR. Our evaluator is authoritative.
-- [ ] **P4.3** E0a-yolo smoke run: 64 images, 1 epoch. Update the §5 estimates.
+- [x] **P4.3** E0a-yolo smoke run: 64 images, 1 epoch. Update the §5 estimates.
 - [ ] **P4.4** E2 (YOLO26n) and E3 (YOLO26s). Launch E2. While it runs, work on P5.1 tooling. Then launch E3.
       Only one GPU kernel runs at a time because the quota is shared.
 - [ ] **P4.5** E4 augmentation ablation and E5 frozen backbone (configs per §5).

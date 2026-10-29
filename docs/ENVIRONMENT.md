@@ -40,7 +40,7 @@ It floats week to week, so re-check before large runs.
 | TPU quota | 20 h/week (not used by this project) |
 | Private datasets storage | 214.75 GB |
 
-The project GPU budget (`PLAN.md` §5) is ~15.5 h of the 30 h weekly quota.
+The project GPU budget (`PLAN.md` §5) is ~11.8 h of the 30 h weekly quota (updated in P4.3).
 
 ## Credentials
 
@@ -77,7 +77,8 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-10-29 | `E1_20261029-0602_da4e489` (complete; **collected**) | GPU T4 x2 | 3023 s | 0.85 h | 1.35 h |
 | 2026-10-29 | `E0a_yolo_20261029-1531_6a64129` (`--resolve-only` path check) | CPU only (no GPU quota) | 62 s | 0 h | 1.35 h |
 | 2026-10-29 | `E0a_yolo_20261029-1534_6a64129` (complete; **collected**) | GPU T4 x2 | 145 s | 0.05 h | 1.40 h |
-| 2026-10-29 | `E0a_yolo_timing_n_20261029-1539_860a6b4` (complete; timing) | GPU T4 x2 | 1559 s | 0.45 h | 1.85 h |
+| 2026-10-29 | `E0a_yolo_timing_n_20261029-1539_860a6b4` (complete; **collected**) | GPU T4 x2 | 1559 s | 0.45 h | 1.85 h |
+| 2026-10-29 | `E0a_yolo_timing_s_20261029-1749_631ad4c` (complete; **collected**) | GPU T4 x2 | 419 s | 0.15 h | 2.00 h |
 
 ### Weight backups
 
