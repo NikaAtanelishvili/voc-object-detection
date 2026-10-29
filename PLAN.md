@@ -344,7 +344,7 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
       _Test:_ label offset round trip using a fake model output.
 - [x] **P3.4** E0a-frcnn smoke run on Kaggle: 64 train images, 1 epoch, val on 64 images. Record s/iter and
       update the §5 estimate for E1.
-- [ ] **P3.5** E1 full run on Kaggle → pull → collect → run error analysis on val.
+- [x] **P3.5** E1 full run on Kaggle → pull → collect → run error analysis on val.
 - [ ] **P3.6** Commit the E1 config and results (`exp(frcnn): E1 baseline results`), and log observations in
       `reports/EXPERIMENTS.md` (generated tables plus a hand-written interpretation paragraph that contains no typed
       numbers; reference the table instead).
