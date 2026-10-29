@@ -363,7 +363,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
       writable dataset root in `/kaggle/working/`: **symlink the images** (no 2 GB copy) and **copy only the
       label files**, so Ultralytics can write its label `.cache` next to them. Write a fresh `voc_yolo.yaml`
       whose `path` points at that root. Verify Ultralytics finds the labels through the symlinked image paths.
-- [ ] **P4.2** `predict_yolo` adapter → `Prediction` (conf 0.001, max_det 100). Also record Ultralytics' own
+- [x] **P4.2** `predict_yolo` adapter → `Prediction` (conf 0.001, max_det 100). Also record Ultralytics' own
       `model.val()` mAP50 on val as a **cross-check**. Explain any difference (interpolation, difficult handling) in
       an ADR. Our evaluator is authoritative.
 - [ ] **P4.3** E0a-yolo smoke run: 64 images, 1 epoch. Update the §5 estimates.

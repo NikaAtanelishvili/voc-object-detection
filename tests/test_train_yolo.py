@@ -5,14 +5,26 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
+import torch
 import yaml
 from PIL import Image
 from pydantic import ValidationError
 
 from vocdet.config import YoloAugmentSettings, YoloConfig
 from vocdet.constants import VOC_CLASSES
-from vocdet.train.train_yolo import build_dataset_root, train_yolo, ultralytics_train_args
+from vocdet.data.parse_voc import build_annotations
+from vocdet.eval.evaluator import evaluate
+from vocdet.eval.schema import GroundTruth, Prediction, read_predictions
+from vocdet.train.train_yolo import (
+    build_dataset_root,
+    train_yolo,
+    ultralytics_train_args,
+    ultralytics_val_crosscheck,
+)
+
+VOC_FIXTURE = Path(__file__).parent / "fixtures" / "voc"
 
 IDS = {"train": ["2008_000001", "2008_000003"], "val": ["2008_000002"], "test": ["2008_000004"]}
 LABELS = {
@@ -119,7 +131,12 @@ def test_unknown_augmentation_key_is_an_error() -> None:
 
 
 class FakeYOLO:
-    """Stands in for ultralytics.YOLO: records train() args and writes what Ultralytics writes."""
+    """Stands in for ultralytics.YOLO: writes what Ultralytics writes and predicts one fixed box."""
+
+    names = dict(enumerate(VOC_CLASSES))
+
+    def __init__(self, weights: str) -> None:
+        self.weights = weights
 
     def train(self, **kwargs) -> None:
         self.kwargs = kwargs
@@ -132,22 +149,78 @@ class FakeYOLO:
             (save_dir / "weights" / name).write_bytes(b"fake")
         self.trainer = SimpleNamespace(save_dir=save_dir)
 
+    def predict(self, sources: list[str], **kwargs) -> list:
+        boxes = SimpleNamespace(
+            xyxy=torch.tensor([[10.0, 10.0, 100.0, 100.0]]),
+            conf=torch.tensor([0.9]),
+            cls=torch.tensor([11.0]),
+        )
+        return [SimpleNamespace(boxes=boxes) for _ in sources]
 
-def test_train_yolo_writes_the_run_layout(prepared, tmp_path: Path) -> None:
+    def val(self, **kwargs) -> SimpleNamespace:
+        self.val_kwargs = kwargs
+        assert Path(kwargs["data"]).exists()  # the dataset root still exists during val
+        return SimpleNamespace(box=SimpleNamespace(map50=0.25, map=0.125))
+
+
+def test_train_yolo_writes_the_run_artifacts(prepared, tmp_path: Path) -> None:
     data, splits = prepared
+    build_annotations(VOC_FIXTURE, data / "annotations.parquet")
     cfg = make_config(epochs=1, limit_train_images=1)
     config_path = tmp_path / "cfg.yaml"
     config_path.write_text(yaml.safe_dump(cfg.model_dump()))
     out_dir = tmp_path / "runs" / "E_test_20261029-0000_abc1234"
 
-    fake = FakeYOLO()
-    best = train_yolo(cfg, config_path, data, out_dir, splits_dir=splits, model=fake)
+    models = []
+    metrics = train_yolo(
+        cfg, config_path, data, out_dir, splits_dir=splits,
+        load_model=lambda w: models.append(FakeYOLO(w)) or models[-1],
+    )  # fmt: skip
 
-    assert fake.num_train_images == 1  # limit_train_images reached the dataset root
-    assert best == out_dir / "weights" / "best.pt" and best.exists()
+    trained, best = models
+    assert trained.weights == "yolo26n.pt" and trained.num_train_images == 1
+    assert best.weights == str(out_dir / "weights" / "best.pt")  # val uses best.pt
+    assert best.val_kwargs["split"] == "val" and best.val_kwargs["plots"] is False
     assert (out_dir / "weights" / "last.pt").exists()
     assert (out_dir / "train_log.csv").read_text().startswith("epoch,")
     assert not (out_dir / "dataset").exists()
+    preds = read_predictions(out_dir / "predictions_val.json")
+    assert [p.image_id for p in preds] == ["2008_000002"]
+    assert json.loads((out_dir / "metrics_val.json").read_text())["map50"] == metrics["map50"]
     meta = json.loads((out_dir / "run_meta.json").read_text())
     assert meta["status"] == "complete" and meta["num_train_images"] == 1
-    assert meta["num_val_images"] == 1
+    check = meta["ultralytics_val_crosscheck"]
+    assert check["ultralytics_map50"] == 0.25 and check["ultralytics_map50_95"] == 0.125
+    assert check["ours_map50_difficult_removed"] == metrics["map50"]  # val image has no difficult
+
+
+def test_crosscheck_counts_a_hit_on_a_difficult_object_as_false_positive(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    # One dog is difficult. The higher-scored detection lies on it: ignored by our evaluator,
+    # but a false positive once difficult objects are removed (as in the YOLO labels).
+    gt = [
+        GroundTruth(
+            "img",
+            np.array([[0, 0, 100, 100], [200, 200, 300, 300]], dtype=np.float32),
+            np.array([11, 11]),
+            np.array([False, True]),
+        )
+    ]
+    preds = [
+        Prediction(
+            "img",
+            np.array([[200, 200, 300, 300], [0, 0, 100, 100]], dtype=np.float32),
+            np.array([0.9, 0.6], dtype=np.float32),
+            np.array([11, 11]),
+        )
+    ]
+    dataset_yaml = tmp_path / "voc_yolo.yaml"
+    dataset_yaml.write_text("unused by the fake\n")
+    check = ultralytics_val_crosscheck(
+        FakeYOLO("best.pt"), dataset_yaml, make_config(), tmp_path, preds, gt
+    )
+    assert evaluate(preds, gt)["map50"] == pytest.approx(1.0)
+    assert check["ours_map50_difficult_removed"] < 0.6
+    # The fake's 0.25 is far from our difficult-removed score, so the gap is flagged.
+    assert "differs from ours" in caplog.text

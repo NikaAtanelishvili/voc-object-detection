@@ -393,3 +393,52 @@ only reloads and re-evaluates).
   pattern keeps weights on Kaggle, so `last.pt` lives only in the kernel output. Deleting a kernel
   deletes its checkpoints.
 - **Pinned versions:** none added.
+
+---
+
+## ADR-013: Ultralytics val as a cross-check for our evaluator
+
+- **Date:** 2026-10-29
+- **Status:** accepted. The size of each effect is measured in every YOLO run, not assumed (see
+  Consequences).
+- **Context:** P4.2 asks for Ultralytics' own `model.val()` mAP next to ours for every fine-tuned YOLO
+  model, with an explanation of any difference. ADR-008 makes our evaluator (torchmetrics + pycocotools)
+  authoritative for every model. A second scorer catches adapter bugs (class map, box scaling, image IDs)
+  that one evaluator cannot see in its own input.
+- **Decision:**
+  - `train/train_yolo.py::ultralytics_val_crosscheck` runs `best.val(data=<run's voc_yolo.yaml>,
+    split="val")` with the run's `imgsz` and `batch`, and leaves `conf` (0.001 for val), `iou` (0.7),
+    and `max_det` (300) at the Ultralytics 8.4.191 defaults. It writes four numbers to
+    `run_meta.json → ultralytics_val_crosscheck`:
+    - `ultralytics_map50` and `ultralytics_map50_95`, from Ultralytics;
+    - `ours_map50_difficult_removed` and `ours_map50_95_difficult_removed`, which are our predictions
+      scored by our evaluator against ground truth with the difficult objects removed.
+  - The authoritative numbers stay in `metrics_val.json` (predict_yolo → evaluate, difficult objects
+    as ignore regions).
+  - A gap of more than `CROSSCHECK_TOLERANCE` (0.02 map50) between `ultralytics_map50` and
+    `ours_map50_difficult_removed` logs a warning. The run is then checked by hand before its numbers
+    are used.
+- **Why the two scores differ** (code read in Ultralytics 8.4.191 and ADR-008):
+  1. **Difficult objects.** The YOLO labels leave them out (`data/export_yolo.py`), so for Ultralytics a
+     detection on one is a false positive. Our evaluator passes them as `iscrowd`, so it ignores such a
+     detection. This makes our map50 higher. It is the one effect the extra score isolates exactly:
+     `metrics_val.json map50 − ours_map50_difficult_removed`.
+  2. **Detection cap.** We keep the top 100 per image (PLAN.md §4). Ultralytics val keeps up to 300.
+     The extra low-score detections can only add recall, so this effect is small and in Ultralytics'
+     favour.
+  3. **Inference batching.** Val uses rectangular batches padded to the batch's largest shape, while
+     `predict` letterboxes each image on its own. The boxes differ slightly.
+  4. **Matching and AP.** Both match greedily: within each image, detections are taken in descending
+     confidence, and each claims the best unclaimed target of its class (`BaseValidator.
+     match_predictions`, default non-scipy path). Both interpolate 101 points. The remaining
+     differences are small: how each builds the per-class precision envelope, and how ties are broken.
+- **Alternatives considered:**
+  - Training YOLO labels with difficult objects included. That changes the training data relative to
+    Faster R-CNN, which never trains on difficult objects (`data/dataset.py`), so it was rejected.
+  - Using only Ultralytics' number for YOLO models. Then the two model families would be scored by
+    different code, and the comparison would be meaningless (ADR-008).
+- **Consequences:**
+  - Each YOLO run costs one extra val pass (seconds on a T4).
+  - The measured size of effect 1 and of the remaining gap (2–4) is quoted from E2's `run_meta.json` in
+    `reports/EXPERIMENTS.md` once E2 is collected (P4.4). It is never typed into this ADR.
+- **Pinned versions:** none added (`ultralytics==8.4.191`, ADR-010).
