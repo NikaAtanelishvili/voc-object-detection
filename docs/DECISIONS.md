@@ -366,8 +366,9 @@ Procedure, with `DEAD` as the dead run ID (e.g. `E1_20261029-1430_abc1234`):
 5. Launch the GPU resume:
    `uv run python scripts/kaggle_run.py --config configs/experiments/E1.yaml --resume-from $DEAD`,
    then `make kaggle-pull RUN=<printed run_id>`.
-6. Collect only the resumed run (`make results`). The dead run's `run_meta.json` still says `running`, so
-   the collector refuses it. Charge both sessions in the GPU usage log in `docs/ENVIRONMENT.md`.
+6. Collect only the resumed run: list its run_id in `results/canonical_runs.yaml`, then `make results`.
+   The dead run's `run_meta.json` still says `running`, so the collector would refuse it if it were
+   listed. Charge both sessions in the GPU usage log in `docs/ENVIRONMENT.md`.
 
 **What is verified and what is not.** Kernel sources mounting another kernel's output: verified (prep
 data, ADR-011). A failed version keeps its `/kaggle/working` outputs when the *script exits with an

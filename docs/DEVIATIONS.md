@@ -264,3 +264,21 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Reason:** P3.6 cannot meet its "generated tables, no typed numbers" criterion without the generator.
 - **Impact:** P5.1 shrinks by one table. No change to any result.
 - **ADR:** none
+
+### 2026-10-29 — before P4.1: results are collected from a canonical-run manifest
+- **Planned:** PLAN.md §2: `scripts/collect_results.py` copies each run's small files into
+  `results/runs/<run_id>/` and appends one row per run to `results/experiments.csv`. With no arguments
+  it collected every finished run in `runs/`.
+- **Actual:** `results/canonical_runs.yaml` (committed) maps each experiment ID to its one canonical
+  run_id. The collector reads only this manifest (the positional run_id arguments are gone), and
+  `experiments.csv` holds exactly one row per manifest entry. It checks that each run's `exp_id` matches
+  its key. When `runs/` lacks a run, as in a fresh clone, it uses the committed `results/runs/` copy.
+  ADR-012 step 6 now says to list the resumed run in the manifest.
+- **Reason:** re-verifying the Phase 3 gate showed that a bare `make results` also collected three
+  superseded runs still in `runs/` (E0a 0544, the 0552 resume check, E0b 0318). A superseded flag would
+  require editing pulled run folders. The owner chose a committed manifest, which states the choice once
+  and in git.
+- **Impact:** no change to any result. `make results && make report` reproduce the committed
+  `experiments.csv`, `results/runs/` and `reports/EXPERIMENTS.md` byte for byte. From Phase 4 on, every
+  accepted run gets a manifest line in its `exp` commit.
+- **ADR:** none (ADR-012 step 6 updated)
