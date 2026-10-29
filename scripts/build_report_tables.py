@@ -38,10 +38,11 @@ def experiments_table(csv_path: Path) -> str:
 
 def replace_block(text: str, name: str, content: str) -> str:
     """Put content between the name's markers; fail if the markers are missing or repeated."""
-    pattern = re.compile(rf"(<!-- BEGIN:{name} -->\n).*?(\n<!-- END:{name} -->)", re.DOTALL)
+    # The block may be empty (a fresh report), so the END marker is matched without a newline.
+    pattern = re.compile(rf"(<!-- BEGIN:{name} -->\n).*?(<!-- END:{name} -->)", re.DOTALL)
     if len(pattern.findall(text)) != 1:
         raise ValueError(f"Expected exactly one BEGIN/END:{name} marker pair")
-    return pattern.sub(lambda m: m.group(1) + content + m.group(2), text)
+    return pattern.sub(lambda m: m.group(1) + content + "\n" + m.group(2), text)
 
 
 def main() -> int:

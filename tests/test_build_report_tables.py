@@ -12,6 +12,8 @@ def test_replace_block_keeps_hand_written_text_and_is_idempotent() -> None:
     once = replace_block(text, "t", "new")
     assert once == "intro\n<!-- BEGIN:t -->\nnew\n<!-- END:t -->\nouter\n"
     assert replace_block(once, "t", "new") == once
+    empty = "<!-- BEGIN:t -->\n<!-- END:t -->\n"  # a fresh report has nothing in between
+    assert replace_block(empty, "t", "new") == "<!-- BEGIN:t -->\nnew\n<!-- END:t -->\n"
 
 
 def test_replace_block_requires_one_marker_pair() -> None:
