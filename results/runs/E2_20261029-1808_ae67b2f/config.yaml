@@ -1,0 +1,17 @@
+# E2 (PLAN.md §5): YOLO26n, 50 epochs, imgsz 640, patience 15, default augmentation.
+# Question: One-stage, smallest.
+exp_id: E2
+seed: 42
+train:
+  weights: yolo26n.pt
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  patience: 15
+kaggle:
+  command: vocdet train-yolo --config configs/experiments/E2.yaml --data-dir kaggle --out-dir {run_dir}
+  gpu: true
+  pip: ["ultralytics==8.4.191"]
+  sources: ["vocdet-prepare-data"]
+  # best.pt is small for YOLO and needed later (P5.2, Phase 6), so it is pulled and backed up to the Hub.
+  pull_pattern: '(kaggle_run\.json|command\.log|config\.yaml|run_meta\.json|train_log\.csv|metrics_val\.json|predictions_val\.json|weights/best\.pt)$'
