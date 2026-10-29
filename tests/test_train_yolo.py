@@ -230,7 +230,7 @@ def test_crosscheck_counts_a_hit_on_a_difficult_object_as_false_positive(
     assert "differs from ours" in caplog.text
 
 
-@pytest.mark.parametrize("name", ["E0a_yolo", "E0a_yolo_timing_n", "E0a_yolo_timing_s"])
+@pytest.mark.parametrize("name", ["E0a_yolo", "E0a_yolo_timing_n", "E0a_yolo_timing_s", "E2", "E3"])
 def test_experiment_configs_are_valid(name: str) -> None:
     path = Path(__file__).resolve().parents[1] / "configs" / "experiments" / f"{name}.yaml"
     cfg = load_job_config(path, YoloConfig)
