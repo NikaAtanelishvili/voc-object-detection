@@ -199,4 +199,4 @@ def write_error_analysis(result: ErrorAnalysis, out_dir: Path) -> None:
         "detections": [asdict(r) for r in result.detections],
         "misses": [asdict(m) for m in result.misses],
     }
-    (out_dir / "error_records.json").write_text(json.dumps(records))
+    (out_dir / "error_records.json").write_text(json.dumps(records) + "\n")  # as the hook expects
