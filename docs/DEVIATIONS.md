@@ -327,3 +327,16 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   budget rule). This mirrors the P3.4 timing run.
 - **Impact:** about 0.4 GPU h from the 5 h buffer. No change to E2–E5 configs.
 - **ADR:** none
+
+### 2026-10-29 — P4.3: dataset root built with a thread pool
+- **Planned:** P4.1's dataset root (symlinked images, copied labels). It was built one file at a time.
+- **Actual:** the kernel log of `E0a_yolo_timing_n_20261029-1539_860a6b4` shows ~655 s spent building the
+  root for 5717 images (~0.1 s per file operation on the `/kaggle/input` mount), before training started.
+  Ultralytics' own label scan then took another ~315 s. `build_dataset_root` now resolves each source
+  folder once and runs the per-image symlink and label copy in a 32-thread pool. Each step waits on the
+  mount, not the CPU. The build time is logged.
+- **Reason:** about 0.18 GPU h per YOLO kernel, spent while the GPU sat idle. Five more YOLO kernels are
+  planned (E3 timing, E2–E5).
+- **Impact:** same files, same results. The E2 estimate keeps the slower timing-n overhead, so it stays
+  an upper bound. The Ultralytics label scan is unchanged.
+- **ADR:** none

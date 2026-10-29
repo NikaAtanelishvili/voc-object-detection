@@ -11,6 +11,8 @@ copied labels.
 
 import logging
 import shutil
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
@@ -35,26 +37,48 @@ logger = logging.getLogger(__name__)
 # A larger map50 gap between Ultralytics and our difficult-removed score than the remaining
 # differences explain (ADR-013) points at an adapter bug: class map, box scaling, or image order.
 CROSSCHECK_TOLERANCE = 0.02
+IO_THREADS = 32  # dataset root build: threads waiting on the mount, not computing
+
+
+def link_image_copy_label(
+    image_id: str, images: Path, labels: Path, out_images: Path, out_labels: Path
+) -> None:
+    """Symlink one image into out_images and copy its label file into out_labels."""
+    link = out_images / f"{image_id}.jpg"
+    if not link.is_symlink():
+        link.symlink_to(images / f"{image_id}.jpg")
+    shutil.copyfile(labels / f"{image_id}.txt", out_labels / f"{image_id}.txt")
 
 
 def build_dataset_root(data_dir: Path, root: Path, split_ids: dict[str, list[str]]) -> Path:
     """Create root/{images,labels}/<split>/ for the given IDs and return root/voc_yolo.yaml.
 
     Only the splits passed in are written, so the test split never reaches Ultralytics
-    (hard rule 4).
+    (hard rule 4). Every file operation on the /kaggle/input mount waits ~0.1 s, so done one by one
+    the 5717 train+val images took ~11 GPU minutes (DEVIATIONS 2026-10-29). Source folders are
+    resolved once, and the per-image work runs in a thread pool, since it waits on I/O, not CPU.
     """
-    source = data_dir / "yolo"
     for split, ids in split_ids.items():
-        (root / "images" / split).mkdir(parents=True, exist_ok=True)
-        (root / "labels" / split).mkdir(parents=True, exist_ok=True)
-        for image_id in ids:
-            image = source / "images" / split / f"{image_id}.jpg"
-            link = root / "images" / split / f"{image_id}.jpg"
-            if not link.is_symlink():
-                link.symlink_to(image.resolve())
-            label = f"{image_id}.txt"
-            shutil.copyfile(source / "labels" / split / label, root / "labels" / split / label)
-        logger.info("Dataset root %s: %d %s images", root, len(ids), split)
+        images = (data_dir / "yolo" / "images" / split).resolve()
+        labels = data_dir / "yolo" / "labels" / split
+        out_images, out_labels = root / "images" / split, root / "labels" / split
+        out_images.mkdir(parents=True, exist_ok=True)
+        out_labels.mkdir(parents=True, exist_ok=True)
+        start = time.monotonic()
+        with ThreadPoolExecutor(max_workers=IO_THREADS) as pool:
+            futures = [
+                pool.submit(link_image_copy_label, i, images, labels, out_images, out_labels)
+                for i in ids
+            ]
+            for future in futures:
+                future.result()  # re-raises a worker's exception here
+        logger.info(
+            "Dataset root %s: %d %s images in %.1f s",
+            root,
+            len(ids),
+            split,
+            time.monotonic() - start,
+        )
 
     dataset_yaml = root / "voc_yolo.yaml"
     spec = {"path": str(root.resolve()), **{s: f"images/{s}" for s in split_ids}}
