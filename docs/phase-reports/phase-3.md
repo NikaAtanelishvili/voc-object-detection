@@ -101,6 +101,7 @@ and 0.85 h for E1.
    - Any other values would mean the warm-up or the milestones are off.
 7. **The report table is generated, not typed.**
    - Run `make report && git diff --stat reports/`. Expected: no changes.
+   - Do not run a bare `make results` first (see open issue 5).
 8. **CI is green.**
    - Run `gh run list --branch phase-3-frcnn --limit 3`. Expected: all `completed success`.
 
@@ -115,6 +116,12 @@ and 0.85 h for E1.
    fine-tuned YOLO numbers, and on the bootstrap CIs (P5.1), because val is small.
 4. **The error analysis threshold** is still the 0.5 default. The F1-optimal threshold is planned for P5.3
    (carried over from Phase 2).
+5. **A bare `make results` also collects superseded runs** found in `runs/` (E0a 0544, the 0552 resume
+   check, E0b 0318) and adds them to `experiments.csv`. The committed files are unaffected. Fix, first on
+   the Phase 4 branch: a committed manifest mapping experiment ID to canonical run_id, read by
+   `collect_results.py`.
+6. **E1 weights live only in the `vocdet-e1` kernel output**, which a rerun would replace. Back up
+   `best.pt` before Phase 4; P5.2 needs it.
 
 ## Next phase (Phase 4: YOLO26 experiments)
 
