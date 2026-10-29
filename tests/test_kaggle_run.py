@@ -86,6 +86,18 @@ def test_run_id_follows_contract() -> None:
 def test_kernel_slug_is_kaggle_safe() -> None:
     assert kernel_slug("env_check") == "vocdet-env-check"
     assert kernel_slug("E0a") == "vocdet-e0a"
+    assert kernel_slug("E0a_frcnn", "E0a_frcnn_20261029-1430_abc1234") == (
+        "vocdet-e0a-frcnn-from-20261029-1430"
+    )
+
+
+def test_resume_metadata_attaches_the_source_kernel_under_its_own_slug() -> None:
+    meta = build_metadata(
+        "me", "E1", gpu=True, sources=["vocdet-prepare-data", "me/vocdet-e1"],
+        resume_from="E1_20261029-1430_abc1234",
+    )  # fmt: skip
+    assert meta["id"] == "me/vocdet-e1-from-20261029-1430"  # never the dead run's own kernel
+    assert meta["kernel_sources"] == ["me/vocdet-prepare-data", "me/vocdet-e1"]
 
 
 def test_metadata_gpu_and_sources() -> None:

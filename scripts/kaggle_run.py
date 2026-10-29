@@ -1,7 +1,7 @@
 """Push one config as a Kaggle kernel that runs the repo at the current, pushed commit.
 
 Usage: uv run python scripts/kaggle_run.py --config configs/kaggle/env_check.yaml [--gpu|--cpu]
-       [--sources slug1,slug2] [--dry-run] [--append-args "..."]
+       [--sources slug1,slug2] [--dry-run] [--append-args "..."] [--resume-from <run_id>]
 
 Refuses a dirty tree or an unpushed HEAD (CLAUDE.md hard rule 6): the kernel clones the public repo
 at HEAD's SHA, so local-only changes would silently not run. The kernel folder is written to
@@ -63,14 +63,32 @@ def https_repo_url(remote_url: str) -> str:
     raise ValueError(f"Unsupported remote URL (expected GitHub SSH or HTTPS): {remote_url}")
 
 
-def kernel_slug(exp_id: str) -> str:
-    """One Kaggle kernel per experiment; each launch is a new version of it."""
-    return "vocdet-" + exp_id.lower().replace("_", "-")
+def kernel_slug(exp_id: str, resume_from: str | None = None) -> str:
+    """One Kaggle kernel per experiment; each launch is a new version of it.
+
+    A resume gets its own kernel, named after the run it resumes: it must mount that run's output,
+    and a kernel source always means the source kernel's latest version, which for the same kernel
+    would be the resume itself (ADR-012).
+    """
+    slug = "vocdet-" + exp_id.lower().replace("_", "-")
+    if resume_from is not None:
+        slug += "-from-" + resume_from.rsplit("_", 2)[1]  # run ID: <exp_id>_<yyyymmdd-hhmm>_<sha7>
+    return slug
 
 
-def build_metadata(username: str, exp_id: str, gpu: bool, sources: list[str]) -> dict:
+def resume_source_kernel(run_id: str) -> str:
+    """The Kaggle kernel that ran run_id, from the kernel folder kaggle_run.py wrote at launch."""
+    metadata_path = KERNELS_DIR / run_id / "kernel-metadata.json"
+    if not metadata_path.exists():
+        raise SystemExit(f"No kernel folder for run {run_id} at {metadata_path.parent}")
+    return json.loads(metadata_path.read_text())["id"]
+
+
+def build_metadata(
+    username: str, exp_id: str, gpu: bool, sources: list[str], resume_from: str | None = None
+) -> dict:
     """kernel-metadata.json fields as documented by the installed Kaggle CLI (2.2.5)."""
-    slug = kernel_slug(exp_id)
+    slug = kernel_slug(exp_id, resume_from)
     return {
         "id": f"{username}/{slug}",
         # The CLI warns unless the title slugifies to the id's slug, so use the slug itself.
@@ -115,6 +133,12 @@ def main() -> int:
         help="Extra arguments appended to the config's command. Use the = form for values that "
         "start with dashes: --append-args=--resolve-only. Recorded in kaggle_run.json.",
     )
+    parser.add_argument(
+        "--resume-from",
+        metavar="RUN_ID",
+        help="Resume this interrupted run (train-frcnn only): attach its kernel's output and "
+        "pass --resume-run to the command. See ADR-012.",
+    )
     args = parser.parse_args()
 
     cfg = load_job_config(args.config)
@@ -122,6 +146,9 @@ def main() -> int:
         cfg.kaggle.command = f"{cfg.kaggle.command} {args.append_args}"
     gpu = cfg.kaggle.gpu if args.gpu is None else args.gpu
     sources = args.sources.split(",") if args.sources else cfg.kaggle.sources
+    if args.resume_from:
+        sources = [*sources, resume_source_kernel(args.resume_from)]
+        cfg.kaggle.command = f"{cfg.kaggle.command} --resume-run {args.resume_from}"
     username = os.environ.get("KAGGLE_USERNAME")
     if not username:
         raise SystemExit("KAGGLE_USERNAME is not set; put it in .env (see .env.example).")
@@ -137,7 +164,7 @@ def main() -> int:
     )
     # The config travels with the kernel folder: provenance, and kaggle_pull reads pull_pattern.
     shutil.copyfile(args.config, kernel_dir / "config.yaml")
-    metadata = build_metadata(username, cfg.exp_id, gpu, sources)
+    metadata = build_metadata(username, cfg.exp_id, gpu, sources, args.resume_from)
     (kernel_dir / "kernel-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     logger.info("Kernel folder: %s (commit %s, gpu=%s)", kernel_dir, commit_sha[:7], gpu)
 
