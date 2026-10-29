@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal, TypeVar
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class KaggleSettings(BaseModel):
@@ -67,6 +67,53 @@ class ZeroShotConfig(JobConfig):
 
     seed: int = 42
     predict: PredictSettings
+
+
+class FrcnnModelSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pretrained: bool = True
+    min_size: int = 600
+    max_size: int = 1000
+
+
+class FrcnnTrainSettings(BaseModel):
+    """Optimisation settings for the Faster R-CNN loop (ADR-012)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    epochs: int = Field(default=12, ge=1)
+    batch_size: int = Field(default=8, ge=1)
+    lr: float = 0.01
+    momentum: float = 0.9
+    weight_decay: float = 1e-4
+    warmup_iters: int = Field(default=500, ge=0)
+    warmup_factor: float = Field(default=0.001, gt=0, le=1, description="LR multiplier at step 0.")
+    milestones: list[int] = Field(default=[8, 11], description="Epochs where LR is times gamma.")
+    gamma: float = 0.1
+    amp: bool = True
+    num_workers: int = 2
+    eval_every: int = Field(default=2, ge=1, description="Validate every N epochs and at the end.")
+    limit_train_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
+    limit_val_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
+
+    @model_validator(mode="after")
+    def _milestones_inside_training(self) -> "FrcnnTrainSettings":
+        if self.milestones != sorted(self.milestones) or any(
+            m <= 0 or m >= self.epochs for m in self.milestones
+        ):
+            raise ValueError("milestones must be sorted epochs strictly between 0 and epochs")
+        return self
+
+
+class FrcnnConfig(JobConfig):
+    """E1 / E0a-frcnn: Faster R-CNN fine-tuning. Unknown keys are errors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = 42
+    model: FrcnnModelSettings
+    train: FrcnnTrainSettings
 
 
 class DataConfig(BaseModel):
