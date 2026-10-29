@@ -28,7 +28,7 @@ def test_lr_schedule() -> None:
     assert lr_at(8000, 11, t) == pytest.approx(0.0001)  # second milestone
 
 
-@pytest.mark.parametrize("name", ["E1", "E0a_frcnn"])
+@pytest.mark.parametrize("name", ["E1", "E0a_frcnn", "E0a_frcnn_timing"])
 def test_experiment_configs_are_valid(name: str) -> None:
     cfg = load_job_config(REPO_ROOT / "configs" / "experiments" / f"{name}.yaml", FrcnnConfig)
     assert cfg.model.min_size == 600 and cfg.model.max_size == 1000

@@ -237,3 +237,15 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   happened during E1.
 - **Impact:** a few CPU minutes. The E1 config can still change before P3.5, in a new commit.
 - **ADR:** ADR-012
+
+### 2026-10-29 — P3.4: an extra GPU timing run before the E1 estimate
+- **Planned:** P3.4 measures s/iter from the 64-image, 1-epoch smoke run (8 iterations).
+- **Actual:** the smoke run `E0a_frcnn_20261029-0548_0256862` completed. Its step times alternate
+  between fast and very slow with near-zero `data_s` (see its `train_log.csv`). Eight steps cannot tell a
+  one-off per-shape cost from a persistent one, and the two cases differ by hours for E1. One extra GPU
+  run, `configs/experiments/E0a_frcnn_timing.yaml` (256 images × 2 epochs = 64 steps), measures the
+  steady state. The §5 E1 estimate is updated from that run's `median_iter_s`.
+- **Reason:** the E1 estimate must not rest on 8 noisy steps (CLAUDE.md GPU budget rule).
+- **Impact:** about 0.1 GPU h from the 5 h buffer. It has its own kernel, so the E0a kernel output stays
+  in place for the CPU resume check.
+- **ADR:** none
