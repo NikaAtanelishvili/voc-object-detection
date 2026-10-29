@@ -223,3 +223,17 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** identical schedule. Unit tests pin the LR at the warm-up start, at warm-up end, and after
   each milestone.
 - **ADR:** ADR-012 (Faster R-CNN training loop)
+
+### 2026-10-29 — P3.4: E1 config committed early; a CPU resume check added
+- **Planned:** P3.4 is the E0a-frcnn smoke run. P3.6 commits "the E1 config and results".
+- **Actual:**
+  - `configs/experiments/E1.yaml` is committed now, together with `E0a_frcnn.yaml`, in one `exp` commit.
+    Its results are still committed in P3.6.
+  - After the GPU smoke run, P3.4 adds one **CPU** kernel (no GPU quota). It resumes the finished E0a run
+    with `kaggle_run.py --resume-from <E0a run> --cpu`. No epochs are left, so it only loads `last.pt`
+    and `best.pt` from the mounted output and re-evaluates.
+- **Reason:** Kaggle kernels run only a pushed commit (hard rule 6), so a config must be committed before
+  its run. The cross-session resume procedure in ADR-012 would otherwise be untested until a real failure
+  happened during E1.
+- **Impact:** a few CPU minutes. The E1 config can still change before P3.5, in a new commit.
+- **ADR:** ADR-012
