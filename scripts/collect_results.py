@@ -13,6 +13,7 @@ import csv
 import json
 import logging
 import shutil
+import statistics
 import sys
 from pathlib import Path
 
@@ -22,7 +23,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = ("config.yaml", "run_meta.json", "metrics_val.json")
 MAX_LOG_BYTES = 1_000_000
 METRIC_COLUMNS = ("map50", "map50_95", "map_small", "map_medium", "map_large", "mar_100")
-COLUMNS = ("run_id", "exp_id", "git_sha", "seed", "gpu_name", "wall_time_s", *METRIC_COLUMNS)
+COLUMNS = (
+    "run_id", "exp_id", "git_sha", "seed", "gpu_name", "wall_time_s", "median_iter_s",
+    *METRIC_COLUMNS,
+)  # fmt: skip
 
 
 class IncompleteRunError(RuntimeError):
@@ -52,6 +56,19 @@ def collect_run(run_dir: Path, results_runs: Path) -> Path:
     return dest
 
 
+def median_iter_s(train_log: Path) -> float | None:
+    """Median seconds per training iteration, the speed used for GPU estimates (§5).
+
+    The median ignores the slow first iterations (CUDA start-up, the loaders' first batches)
+    without choosing how many to drop. None for runs without a training log or timing column.
+    """
+    if not train_log.exists():
+        return None
+    with train_log.open(newline="") as f:
+        times = [float(row["iter_s"]) for row in csv.DictReader(f) if row.get("iter_s")]
+    return round(statistics.median(times), 4) if times else None
+
+
 def experiment_row(result_dir: Path) -> dict:
     meta = json.loads((result_dir / "run_meta.json").read_text())
     metrics = json.loads((result_dir / "metrics.json").read_text())
@@ -62,6 +79,7 @@ def experiment_row(result_dir: Path) -> dict:
         "seed": meta["seed"],
         "gpu_name": meta.get("gpu_name"),
         "wall_time_s": meta.get("wall_time_s"),
+        "median_iter_s": median_iter_s(result_dir / "train_log.csv"),
     }
     row.update({name: metrics.get(name) for name in METRIC_COLUMNS})
     return row

@@ -39,8 +39,9 @@ results:
 
 # Stubs below fail loudly so a missing target is never mistaken for a successful one.
 
+# Regenerate generated tables inside reports/*.md from results/ (P3.6 experiments table; P5.1 the rest).
 report:
-	@echo "not implemented yet (P5.1)"; exit 1
+	$(UV) python scripts/build_report_tables.py
 
 bench:
 	@echo "not implemented yet (P6.3)"; exit 1

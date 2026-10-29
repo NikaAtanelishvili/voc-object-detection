@@ -304,3 +304,91 @@ order they are written, so the plan's references stay valid.
   prep run with a different run ID can be attached side by side without ambiguity. Two copies of the same
   run ID fail loudly instead of being picked arbitrarily.
 - **Pinned versions:** none added.
+
+## ADR-012: Faster R-CNN training loop and resume
+
+- **Date:** 2026-10-29
+- **Status:** accepted
+- **Context:** P3.2 asks for our own explicit training loop (CLAUDE.md: no framework hides it) with
+  warm-up plus step decay, AMP, gradient-norm logging, periodic validation, best/last checkpoints, and
+  resume, because a Kaggle session can die. Each Kaggle launch is a new session with a new run folder
+  under `/kaggle/working`. Nothing from an earlier session is on disk unless it is attached as an input.
+- **Decision:**
+  - **Loop** (`train/train_frcnn.py::train_one_epoch`): per iteration, set the LR, forward (the model
+    returns its four losses in train mode), sum them, then `GradScaler.scale(loss).backward()` and
+    `unscale_`. Measure the gradient norm with `clip_grad_norm_(max_norm=inf)` (it measures and never
+    clips), then `scaler.step` and `scaler.update`. One CSV row per iteration holds the LR, total loss, the
+    four component losses, and the gradient norm. A non-finite loss raises `FloatingPointError`
+    immediately.
+  - **LR** is one pure function, `lr_at(step, epoch)`: a linear warm-up from `lr * warmup_factor` over the
+    first `warmup_iters` steps, times `gamma` for every milestone epoch reached. This is the schedule of
+    `MultiStepLR` plus a warm-up, without two chained scheduler objects (DEVIATIONS 2026-10-29). Nothing
+    needs saving for resume.
+  - **Validation** runs every `eval_every` epochs and after the last one, through the shared evaluator
+    (ADR-008). `best.pt` holds the weights with the highest val map50. The final `predictions_val.json`
+    and `metrics_val.json` are re-predicted from `best.pt`, so they are right after a resume too.
+  - **`last.pt`** is written after every epoch. It holds the model, optimizer, AMP scaler, shuffle
+    generator, the Python/NumPy/torch/CUDA RNG states, the epoch, the global step, and the best score. A
+    session that dies mid-epoch loses at most that epoch.
+  - **Resume into any folder.** The source run is the folder above `last.pt`. Its `best.pt` is copied
+    over. Both logs are rebuilt from the source logs, keeping only rows up to the checkpoint's epoch
+    (`start_log`). Rows of the unfinished epoch are dropped because that epoch is trained again. A missing
+    source log becomes a header-only file. `run_meta.json` records `resumed_from`.
+
+### Resuming a dead Kaggle run
+
+**How the new session gets `last.pt`.** It attaches the dead run's kernel output as a kernel source.
+This is the same mechanism the prep data uses (ADR-011), and it is found the same way:
+`utils/kaggle_input.py::find_run_file(<run_id>, "weights/last.pt")` searches `/kaggle/input` at any
+depth. The resume **must be a different kernel**. A kernel source always mounts the source kernel's
+*latest* version, and a new version of `vocdet-e1` would be the resume itself. So
+`kaggle_run.py --resume-from <run_id>`:
+- pushes to `vocdet-<exp>-from-<yyyymmdd-hhmm>`, named after the dead run's timestamp;
+- adds the dead run's kernel, read from `kaggle/kernels/<run_id>/kernel-metadata.json` on the
+  launching machine, to `kernel_sources`;
+- appends `--resume-run <run_id>` to the command.
+
+Procedure, with `DEAD` as the dead run ID (e.g. `E1_20261029-1430_abc1234`):
+
+1. Do **not** launch anything else on `vocdet-e1` until the resume finishes. A new version would replace
+   the output the resume mounts.
+2. Pull what the dead run saved: `make kaggle-pull RUN=$DEAD`. It downloads the logs. It exits non-zero
+   when `kaggle_run.json` is missing (a killed session), and that is expected. Read
+   `runs/$DEAD/command.log` and `train_log.csv` to see where and why it died. If it died from a code bug,
+   fix the bug, commit, and push first. The resume runs the current HEAD, and `run_meta.json` records
+   both the SHA and `resumed_from`.
+3. Check that the checkpoint survived: `uv run kaggle kernels files nikaatanelishvili/vocdet-e1` must
+   list `last.pt` (and `best.pt` if a validation ran). If `last.pt` is not listed, stop: there is
+   nothing to resume, so rerun from scratch.
+4. Check the path on CPU, which uses no GPU quota (same pattern as ADR-011):
+   `uv run python scripts/kaggle_run.py --config configs/experiments/E1.yaml --resume-from $DEAD --cpu --append-args=--resolve-only`,
+   then `make kaggle-pull RUN=<printed run_id>`. Its `command.log` must show `Resume from: /kaggle/input/.../$DEAD/weights/last.pt`.
+5. Launch the GPU resume:
+   `uv run python scripts/kaggle_run.py --config configs/experiments/E1.yaml --resume-from $DEAD`,
+   then `make kaggle-pull RUN=<printed run_id>`.
+6. Collect only the resumed run (`make results`). The dead run's `run_meta.json` still says `running`, so
+   the collector refuses it. Charge both sessions in the GPU usage log in `docs/ENVIRONMENT.md`.
+
+**What is verified and what is not.** Kernel sources mounting another kernel's output: verified (prep
+data, ADR-011). A failed version keeps its `/kaggle/working` outputs when the *script exits with an
+error*: verified, because the failed run `E0b_20261028-0257_5978b2b` was pulled with its logs. Whether
+outputs survive when *Kaggle kills the session* (time limit, out-of-memory kill, lost worker): **not
+verified**. If they do not, cross-session resume is impossible for that failure, and step 3 detects
+this. The fallback is a full rerun. That costs at most the E1 estimate (§5), inside the 5 h buffer, and
+PLAN.md §9 keeps every run ≤4 h, far from the session limit. The path through steps 4–5 is tested
+end to end on Kaggle in P3.4 by resuming the finished E0a-frcnn smoke run on CPU (no epochs left, so it
+only reloads and re-evaluates).
+
+- **Alternatives considered:**
+  - `MultiStepLR` + `LinearLR` in a `SequentialLR`: the same schedule, but a stateful object to save,
+    and subtle per-step/per-epoch ordering.
+  - Uploading `last.pt` as a Kaggle dataset for the new session: extra manual upload steps and ~150 MB
+    through the local machine, for the same result as a kernel source.
+  - A new version of the same kernel sourcing itself: impossible, because a source means its latest version.
+  - Requiring the user to copy logs by hand on resume: easy to forget; a forgotten copy produced
+    header-less logs.
+- **Consequences:** a dead session costs at most one epoch plus the session start-up, *if* its output
+  was saved. Resume kernels add extra kernels (`vocdet-e1-from-...`) to the Kaggle account. The pull
+  pattern keeps weights on Kaggle, so `last.pt` lives only in the kernel output. Deleting a kernel
+  deletes its checkpoints.
+- **Pinned versions:** none added.

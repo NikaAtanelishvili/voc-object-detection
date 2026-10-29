@@ -1,0 +1,15 @@
+{
+  "timing_run": "E0a_frcnn_timing_20261029-0552_2dd6526",
+  "config": "configs/experiments/E1.yaml",
+  "fit": {
+    "new_shape_s": 7.4948,
+    "repeat_s": 0.2428,
+    "separation": 21.104522312069484,
+    "num_new": 25,
+    "num_repeat": 39
+  },
+  "steps": 7728,
+  "distinct_shapes": 105,
+  "train_hours": 0.733,
+  "excludes": "validation, final prediction, kernel start-up"
+}

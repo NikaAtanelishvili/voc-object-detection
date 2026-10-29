@@ -2,7 +2,7 @@
 
 predict_yolo serves both the zero-shot COCO model (E0b) and our fine-tuned VOC models (P4.2): the
 class map translates the model's own class indices to VOC indices, and classes without a VOC
-counterpart are dropped.
+counterpart are dropped. predict_frcnn serves our Faster R-CNN (P3.3).
 """
 
 import logging
@@ -10,8 +10,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
+import torch
+from torchvision.io import ImageReadMode, decode_image
 
 from vocdet.constants import COCO_TO_VOC, VOC_CLASSES
+from vocdet.data.dataset import LABEL_OFFSET
 from vocdet.eval.schema import Prediction
 
 logger = logging.getLogger(__name__)
@@ -93,4 +96,47 @@ def predict_yolo(
                 )
             )
         logger.info("Predicted %d / %d images", len(predictions), len(image_paths))
+    return predictions
+
+
+def frcnn_output_to_prediction(image_id: str, output: dict) -> Prediction:
+    """One torchvision detection output -> Prediction.
+
+    torchvision labels are VOC class_id + LABEL_OFFSET (0 is background and never returned), so
+    the offset is subtracted here: the exact inverse of the dataset's `+ LABEL_OFFSET`. The model
+    already applies the 0.001 score threshold and the top-100 cap (models/frcnn.py).
+    """
+    labels = output["labels"].cpu().numpy() - LABEL_OFFSET
+    return Prediction(
+        image_id,
+        output["boxes"].float().cpu().numpy(),
+        output["scores"].float().cpu().numpy(),
+        labels,
+    )
+
+
+@torch.no_grad()
+def predict_frcnn(
+    model,
+    image_ids: list[str],
+    image_dir: Path,
+    device: torch.device,
+    batch_size: int = 8,
+) -> list[Prediction]:
+    """Run Faster R-CNN over images (read like the training dataset: RGB floats in [0, 1])."""
+    model.eval()
+    predictions = []
+    for chunk in _batches(image_ids, batch_size):
+        images = [
+            decode_image(str(image_dir / f"{i}.jpg"), mode=ImageReadMode.RGB)
+            .float()
+            .div(255)
+            .to(device)
+            for i in chunk
+        ]
+        outputs = model(images)
+        predictions.extend(
+            frcnn_output_to_prediction(i, out) for i, out in zip(chunk, outputs, strict=True)
+        )
+    logger.info("Faster R-CNN predicted %d images", len(predictions))
     return predictions

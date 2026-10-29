@@ -191,3 +191,76 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   belong in `predict.py`.
 - **Impact:** P4.1 only has to confirm the guard on the training kernel.
 - **ADR:** [ADR-010](DECISIONS.md#adr-010-linux-only-lock-resolution-and-the-ultralytics-pin)
+
+### 2026-10-29 — P0.3 (found in P3.2) — CPU torch index mapping was lost for Phases 1–2
+- **Planned:** P0.3: CI and local installs use CPU-only torch/torchvision wheels, via
+  `[tool.uv.sources]` mapping them to the `pytorch-cpu` index.
+- **Actual:** commit `f2ded7a` (P1.1) ran `uv remove torch torchvision` to keep the Python-floor commit
+  separate. That command also deletes the packages' `[tool.uv.sources]` entries. The following `uv add`
+  then resolved CUDA builds from PyPI (`2.11.0` with `nvidia-*` dependencies). From `f2ded7a` until this
+  fix, CI and the local environment ran CUDA torch on CPU machines. It was noticed when the installed
+  version printed `2.11.0+cu130`.
+- **Reason:** a side effect of `uv remove` that was not checked at the time.
+- **Impact:** no effect on any result. Kaggle installs our package with `--no-deps` and uses its own
+  `2.11.0+cu128`, and E0b ran there. CI downloaded much larger wheels (cached after the first run). The
+  sources table is restored, and `uv.lock` again pins `torch==2.11.0+cpu` / `torchvision==0.26.0+cpu`;
+  all tests pass on them. Lesson: after `uv remove`, check the `[tool.uv.sources]` table.
+- **ADR:** none
+
+### 2026-10-29 — P3.3 before P3.2; explicit LR function instead of `MultiStepLR`
+- **Planned:** task order P3.2 (training loop) → P3.3 (`predict_frcnn`). P3.2 uses `MultiStepLR` at
+  epochs [8, 11] plus a 500-iteration linear warm-up.
+- **Actual:**
+  - P3.3 is implemented and committed first, because the training loop's validation step calls
+    `predict_frcnn`.
+  - The learning rate comes from one explicit function, `lr_at(step, epoch)`: linear warm-up over the
+    first `warmup_iters` iterations, multiplied by 0.1 for each milestone epoch reached. This is the same
+    schedule as `MultiStepLR` (gamma 0.1) combined with a warm-up, without two interacting scheduler
+    objects.
+- **Reason:** a dependency between tasks. And chaining a per-iteration warm-up with a per-epoch
+  `MultiStepLR` has subtle ordering rules (each multiplies the current LR); one pure function is easier
+  to test, explain, and resume (no scheduler state to save).
+- **Impact:** identical schedule. Unit tests pin the LR at the warm-up start, at warm-up end, and after
+  each milestone.
+- **ADR:** ADR-012 (Faster R-CNN training loop)
+
+### 2026-10-29 — P3.4: E1 config committed early; a CPU resume check added
+- **Planned:** P3.4 is the E0a-frcnn smoke run. P3.6 commits "the E1 config and results".
+- **Actual:**
+  - `configs/experiments/E1.yaml` is committed now, together with `E0a_frcnn.yaml`, in one `exp` commit.
+    Its results are still committed in P3.6.
+  - After the GPU smoke run, P3.4 adds one **CPU** kernel (no GPU quota). It resumes the finished E0a run
+    with `kaggle_run.py --resume-from <E0a run> --cpu`. No epochs are left, so it only loads `last.pt`
+    and `best.pt` from the mounted output and re-evaluates.
+- **Reason:** Kaggle kernels run only a pushed commit (hard rule 6), so a config must be committed before
+  its run. The cross-session resume procedure in ADR-012 would otherwise be untested until a real failure
+  happened during E1.
+- **Impact:** a few CPU minutes. The E1 config can still change before P3.5, in a new commit.
+- **ADR:** ADR-012
+
+### 2026-10-29 — P3.4: an extra GPU timing run before the E1 estimate
+- **Planned:** P3.4 measures s/iter from the 64-image, 1-epoch smoke run (8 iterations).
+- **Actual:** the smoke run `E0a_frcnn_20261029-0548_0256862` completed. Its step times alternate
+  between fast and very slow with near-zero `data_s` (see its `train_log.csv`). Eight steps cannot tell a
+  one-off per-shape cost from a persistent one, and the two cases differ by hours for E1. One extra GPU
+  run, `configs/experiments/E0a_frcnn_timing.yaml` (256 images × 2 epochs = 64 steps), measures the
+  steady state. The §5 E1 estimate is updated from that run's `median_iter_s`.
+- **Reason:** the E1 estimate must not rest on 8 noisy steps (CLAUDE.md GPU budget rule).
+- **Impact:** about 0.1 GPU h from the 5 h buffer. It has its own kernel, so the E0a kernel output stays
+  in place for the CPU resume check.
+- **ADR:** none
+- **Update (same day, after the run):** the median is not a usable estimate, because about 105 of
+  E1's steps are slow and the rest are fast. A shape replay confirmed this (64/64 steps predicted). The
+  §5 estimate therefore comes from `scripts/estimate_frcnn_time.py` → `results/estimates/E1.json`,
+  not from `median_iter_s` alone.
+
+### 2026-10-29 — P3.6: the experiment table of `build_report_tables.py` written before P5.1
+- **Planned:** `scripts/build_report_tables.py` is created in P5.1. P3.6 already asks for "generated
+  tables" in `reports/EXPERIMENTS.md`.
+- **Actual:** P3.6 creates the script with one table, the experiment comparison from
+  `results/experiments.csv`, written between `<!-- BEGIN/END:experiments -->` markers, and wires up
+  `make report`. P5.1 adds the per-class, size-bucket, and error tables, the bootstrap CIs, and the figures
+  to the same script.
+- **Reason:** P3.6 cannot meet its "generated tables, no typed numbers" criterion without the generator.
+- **Impact:** P5.1 shrinks by one table. No change to any result.
+- **ADR:** none

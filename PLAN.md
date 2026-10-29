@@ -191,14 +191,18 @@ Epoch numbers are starting points. The smoke runs (P3.4/P4.3) measure seconds pe
 | --- | ------------------------------ | ------------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------- |
 | E0a | both                           | 64 images, 1 epoch                                                        | Does the pipeline work end to end? Speed calibration  | 0.3                     |
 | E0b | YOLO26n COCO, no training      | COCO→VOC class mapping, zero-shot                                         | How much does fine-tuning add over pretraining alone? | 0.2                     |
-| E1  | Faster R-CNN MobileNetV3-L FPN | 12 epochs, SGD lr 0.01, bs 8, short side 600, AMP                         | Two-stage baseline                                    | 2.5                     |
+| E1  | Faster R-CNN MobileNetV3-L FPN | 12 epochs, SGD lr 0.01, bs 8, short side 600, AMP                         | Two-stage baseline                                    | 1.0 ¹                   |
 | E2  | YOLO26n                        | 50 epochs, imgsz 640, patience 15, default aug                            | One-stage, smallest                                   | 1.5                     |
 | E3  | YOLO26s                        | same as E2                                                                | Capacity vs speed                                     | 3.0                     |
 | E4  | YOLO26n                        | minimal aug: mosaic=0, mixup=0, hsv=0, scale=0, translate=0 (fliplr kept) | What does augmentation buy?                           | 1.5                     |
 | E5  | YOLO26n                        | freeze=10 (backbone frozen)                                               | Full fine-tune vs frozen backbone (cost/accuracy)     | 1.0                     |
 | O\* | best model                     | export + GPU FP16/TensorRT bench (optional)                               | Optimization                                          | 0.5                     |
 | —   | buffer                         | reruns / failures / seed 43                                               |                                                       | 5.0                     |
-|     |                                |                                                                           | **Total budget**                                      | **~15.5 of ~30 weekly** |
+|     |                                |                                                                           | **Total budget**                                      | **~14.0 of ~30 weekly** |
+
+¹ Updated in P3.4 (was 2.5). Training time comes from `results/estimates/E1.json`
+(`scripts/estimate_frcnn_time.py`: replayed batch shapes priced with the timing run
+`E0a_frcnn_timing_20261029-0552_2dd6526`), rounded up to cover validation and kernel start-up.
 
 The weekly Kaggle GPU quota is shown in Kaggle account settings (commonly about 30 h, but it floats). The human
 checks it in P0.5 and writes it into `docs/ENVIRONMENT.md`. Run data preparation and EDA on **CPU** kernels so
@@ -328,20 +332,20 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
 
 ### Phase 3 — Faster R-CNN baseline (Day 2 evening → Day 3)
 
-- [ ] **P3.1** `models/frcnn.py`: `build_frcnn(num_classes=21, pretrained=True)` loading torchvision COCO
+- [x] **P3.1** `models/frcnn.py`: `build_frcnn(num_classes=21, pretrained=True)` loading torchvision COCO
       weights and replacing `roi_heads.box_predictor` with a `FastRCNNPredictor(in_features, 21)`. Set
       `min_size`/`max_size` from config (600/1000). Log parameter counts.
-- [ ] **P3.2** `train/train_frcnn.py`: explicit training loop with SGD (momentum 0.9, wd 1e-4), linear warm-up
+- [x] **P3.2** `train/train_frcnn.py`: explicit training loop with SGD (momentum 0.9, wd 1e-4), linear warm-up
       over the first 500 iterations, `MultiStepLR` at epochs [8, 11], AMP via `torch.amp`, gradient-norm logging,
       per-iteration loss CSV (total and the four component losses), val mAP every 2 epochs plus the last epoch,
       `best.pt` saved by val map50, `last.pt` saved every epoch, and **resume** from `last.pt` (Kaggle sessions can
       die). Seed everything and set `num_workers` from config.
-- [ ] **P3.3** `eval/predict.py::predict_frcnn` → `Prediction` (labels −1, score threshold 0.001, top 100).
+- [x] **P3.3** `eval/predict.py::predict_frcnn` → `Prediction` (labels −1, score threshold 0.001, top 100).
       _Test:_ label offset round trip using a fake model output.
-- [ ] **P3.4** E0a-frcnn smoke run on Kaggle: 64 train images, 1 epoch, val on 64 images. Record s/iter and
+- [x] **P3.4** E0a-frcnn smoke run on Kaggle: 64 train images, 1 epoch, val on 64 images. Record s/iter and
       update the §5 estimate for E1.
-- [ ] **P3.5** E1 full run on Kaggle → pull → collect → run error analysis on val.
-- [ ] **P3.6** Commit the E1 config and results (`exp(frcnn): E1 baseline results`), and log observations in
+- [x] **P3.5** E1 full run on Kaggle → pull → collect → run error analysis on val.
+- [x] **P3.6** Commit the E1 config and results (`exp(frcnn): E1 baseline results`), and log observations in
       `reports/EXPERIMENTS.md` (generated tables plus a hand-written interpretation paragraph that contains no typed
       numbers; reference the table instead).
 

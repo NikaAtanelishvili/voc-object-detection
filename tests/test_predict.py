@@ -65,3 +65,36 @@ def test_predict_yolo_batches_and_converts() -> None:
     assert model.calls[0]["conf"] == 0.001 and model.calls[0]["imgsz"] == 512
     assert [p.image_id for p in preds] == [p.stem for p in paths]
     assert preds[0].labels.tolist() == [7] and preds[0].boxes.tolist() == [[1.0, 2.0, 30.0, 40.0]]
+
+
+def test_frcnn_label_offset_round_trip() -> None:
+    """Dataset adds LABEL_OFFSET for torchvision; the adapter must subtract exactly that."""
+    from vocdet.data.dataset import LABEL_OFFSET
+    from vocdet.eval.predict import frcnn_output_to_prediction
+
+    voc_labels = np.array([0, VOC_CLASSES.index("person"), 19])
+    torchvision_labels = torch.from_numpy(voc_labels + LABEL_OFFSET)  # what the model is trained on
+    output = {
+        "boxes": torch.tensor([[0.0, 0, 5, 5], [1, 1, 6, 6], [2, 2, 7, 7]]),
+        "scores": torch.tensor([0.9, 0.5, 0.01]),
+        "labels": torchvision_labels,
+    }
+    p = frcnn_output_to_prediction("img", output)
+    assert p.labels.tolist() == voc_labels.tolist()  # 1..20 -> 0..19
+    assert p.scores.tolist() == pytest.approx([0.9, 0.5, 0.01])
+
+
+def test_predict_frcnn_with_random_model(tmp_path: Path) -> None:
+    from PIL import Image
+
+    from vocdet.eval.predict import predict_frcnn
+    from vocdet.models.frcnn import build_frcnn
+
+    for i in ("a", "b", "c"):
+        Image.new("RGB", (160, 120), (90, 120, 150)).save(tmp_path / f"{i}.jpg")
+    model = build_frcnn(pretrained=False, min_size=128, max_size=160)
+    preds = predict_frcnn(model, ["a", "b", "c"], tmp_path, torch.device("cpu"), batch_size=2)
+    assert [p.image_id for p in preds] == ["a", "b", "c"]
+    for p in preds:  # random weights: maybe no boxes, but any box obeys the schema
+        assert len(p.boxes) <= 100
+        assert ((p.labels >= 0) & (p.labels <= 19)).all()

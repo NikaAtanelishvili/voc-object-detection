@@ -7,7 +7,6 @@ what training kernels mount via kernel_sources, so it holds everything they need
 import importlib.metadata
 import json
 import logging
-import os
 from pathlib import Path
 
 from vocdet.data.eda import run_eda
@@ -16,6 +15,7 @@ from vocdet.data.export_yolo import export_yolo
 from vocdet.data.integrity import EXPECTED_OFFICIAL_COUNTS, check_integrity
 from vocdet.data.parse_voc import build_annotations
 from vocdet.data.splits import build_splits
+from vocdet.utils.kaggle_input import KAGGLE_INPUT, find_run_file
 
 logger = logging.getLogger(__name__)
 
@@ -60,33 +60,10 @@ def prepare_all(
     logger.info("Prepared data written to %s", out_dir)
 
 
-def find_prepared_dir(prep_run_id: str, root: Path = Path("/kaggle/input")) -> Path:
+def find_prepared_dir(prep_run_id: str, root: Path = KAGGLE_INPUT) -> Path:
     """Return the one <prep_run_id>/voc_prepared/ folder under root that has annotations.parquet.
 
-    Searched recursively because Kaggle mounts the same kernel_sources at different depths in
-    different kernels (/kaggle/input/<slug>/... vs /kaggle/input/notebooks/<owner>/<slug>/...,
-    ADR-011). Matching on the prep run ID keeps the data version pinned. Zero or several matches
-    fail immediately, listing what is there.
+    Matching on the prep run ID keeps the data version pinned; the search itself (any mount depth,
+    fail fast on zero or several matches) is find_run_file's (ADR-011).
     """
-    matches = []
-    seen = set()  # real paths already walked, so symlink loops cannot recurse forever
-    for dirpath, dirnames, _ in os.walk(root, followlinks=True):
-        real = os.path.realpath(dirpath)
-        if real in seen:
-            dirnames[:] = []
-            continue
-        seen.add(real)
-        here = Path(dirpath)
-        if here.name == prep_run_id and (here / "voc_prepared" / "annotations.parquet").is_file():
-            matches.append(here / "voc_prepared")
-        # Never descend into prepared data: ~23k images and labels, and nothing to find there.
-        dirnames[:] = [d for d in dirnames if d != "voc_prepared"]
-
-    if len(matches) != 1:
-        listing = sorted(str(p) for depth in ("*", "*/*", "*/*/*") for p in root.glob(depth))[:60]
-        raise FileNotFoundError(
-            f"Expected exactly one {prep_run_id}/voc_prepared/annotations.parquet under {root}, "
-            f"found {len(matches)}: {[str(m) for m in matches]}. Entries under {root}: {listing}"
-        )
-    logger.info("Prepared data found at %s", matches[0])
-    return matches[0]
+    return find_run_file(prep_run_id, "voc_prepared/annotations.parquet", root).parent
