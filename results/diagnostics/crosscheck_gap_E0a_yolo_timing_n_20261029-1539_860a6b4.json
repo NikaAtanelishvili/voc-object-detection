@@ -1,0 +1,8 @@
+{
+  "weights": "runs/E0a_yolo_timing_n_20261029-1539_860a6b4/weights/best.pt",
+  "ours_map50": 0.798774242401123,
+  "ultralytics_metric_on_our_predictions": 0.8009284544606878,
+  "ultralytics_metric_on_our_predictions_top300": 0.8011110934673569,
+  "model_val_map50_batch16": 0.8209521955696026,
+  "model_val_map50_batch1": 0.819319679760885
+}
