@@ -12,7 +12,7 @@ import yaml
 from PIL import Image
 from pydantic import ValidationError
 
-from vocdet.config import YoloAugmentSettings, YoloConfig
+from vocdet.config import YoloAugmentSettings, YoloConfig, load_job_config
 from vocdet.constants import VOC_CLASSES
 from vocdet.data.parse_voc import build_annotations
 from vocdet.eval.evaluator import evaluate
@@ -224,3 +224,11 @@ def test_crosscheck_counts_a_hit_on_a_difficult_object_as_false_positive(
     assert check["ours_map50_difficult_removed"] < 0.6
     # The fake's 0.25 is far from our difficult-removed score, so the gap is flagged.
     assert "differs from ours" in caplog.text
+
+
+@pytest.mark.parametrize("name", ["E0a_yolo"])
+def test_experiment_configs_are_valid(name: str) -> None:
+    path = Path(__file__).resolve().parents[1] / "configs" / "experiments" / f"{name}.yaml"
+    cfg = load_job_config(path, YoloConfig)
+    assert cfg.kaggle.pip == ["ultralytics==8.4.191"]
+    assert "vocdet-prepare-data" in cfg.kaggle.sources
