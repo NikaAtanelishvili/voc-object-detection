@@ -1,0 +1,29 @@
+{
+  "run_id": "E0a_frcnn_20261029-0548_0256862",
+  "exp_id": "E0a_frcnn",
+  "git_sha": "02568627652cfebec79db5524f7b66defacf1741",
+  "seed": 42,
+  "status": "complete",
+  "start_utc": "2026-10-29T01:49:43.259227+00:00",
+  "python": "3.13.15",
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "hostname": "776b0e48e55b",
+  "cpu_count": 4,
+  "gpu_name": "Tesla T4",
+  "packages": {
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "torchmetrics": "1.9.0",
+    "pycocotools": "2.0.11",
+    "ultralytics": null,
+    "numpy": "2.1.3",
+    "vocdet": "0.1.0"
+  },
+  "data_dir": "/kaggle/input/notebooks/nikaatanelishvili/vocdet-prepare-data/prepare_data_20261028-0208_7b7605e/voc_prepared",
+  "best_epoch": 0,
+  "device": "cuda",
+  "num_train_images": 64,
+  "num_val_images": 64,
+  "end_utc": "2026-10-29T01:50:40.358996+00:00",
+  "wall_time_s": 57.1
+}

@@ -1,0 +1,27 @@
+# E0a-frcnn timing check (DEVIATIONS 2026-10-29): the 8-iteration smoke run alternated ~0.3 s and
+# ~7.5 s steps with no data wait. 256 train images x 2 epochs (64 steps) shows whether the slow steps
+# are a one-off per input shape (epoch 1 reuses epoch 0's shapes) and gives a steady-state s/iter for E1.
+exp_id: E0a_frcnn_timing
+seed: 42
+model:
+  pretrained: true
+  min_size: 600
+  max_size: 1000
+train:
+  epochs: 2
+  batch_size: 8
+  lr: 0.01
+  warmup_iters: 16
+  milestones: []
+  amp: true
+  num_workers: 2
+  eval_every: 2
+  limit_train_images: 256
+  limit_val_images: 64
+kaggle:
+  command: >-
+    vocdet train-frcnn --config configs/experiments/E0a_frcnn_timing.yaml --data-dir kaggle
+    --out-dir {run_dir}
+  gpu: true
+  sources: ["vocdet-prepare-data"]
+  pull_pattern: '(kaggle_run\.json|command\.log|config\.yaml|run_meta\.json|train_log\.csv|val_log\.csv|metrics_val\.json|predictions_val\.json)$'

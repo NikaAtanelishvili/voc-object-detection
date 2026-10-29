@@ -249,3 +249,7 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** about 0.1 GPU h from the 5 h buffer. It has its own kernel, so the E0a kernel output stays
   in place for the CPU resume check.
 - **ADR:** none
+- **Update (same day, after the run):** the median is not a usable estimate, because about 105 of
+  E1's steps are slow and the rest are fast. A shape replay confirmed this (64/64 steps predicted). The
+  §5 estimate therefore comes from `scripts/estimate_frcnn_time.py` → `results/estimates/E1.json`,
+  not from `median_iter_s` alone.

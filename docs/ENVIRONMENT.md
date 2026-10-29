@@ -68,6 +68,11 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-10-28 | `E0b_20261028-0316_9f350f7` (`--resolve-only` path check) | CPU only (no GPU quota) | 50 s | 0 h | 0.20 h |
 | 2026-10-28 | `E0b_20261028-0318_9f350f7` (complete; superseded, rounded predictions JSON) | GPU T4 x2 | 110 s | 0.05 h | 0.25 h |
 | 2026-10-28 | `E0b_20261028-0321_fa7911f` (complete; **collected**) | GPU T4 x2 | 104 s | 0.05 h | 0.30 h |
+| 2026-10-29 | `E0a_frcnn_20261029-0543_1970920` (`--resolve-only` path check) | CPU only (no GPU quota) | 49 s | 0 h | 0.30 h |
+| 2026-10-29 | `E0a_frcnn_20261029-0544_1970920` (complete; superseded, no step timing) | GPU T4 x2 | 101 s | 0.05 h | 0.35 h |
+| 2026-10-29 | `E0a_frcnn_20261029-0548_0256862` (complete; **collected**) | GPU T4 x2 | 106 s | 0.05 h | 0.40 h |
+| 2026-10-29 | `E0a_frcnn_20261029-0552_2dd6526` (cross-session resume check of `0548`) | CPU only (no GPU quota) | 123 s | 0 h | 0.40 h |
+| 2026-10-29 | `E0a_frcnn_timing_20261029-0552_2dd6526` (complete; **collected**) | GPU T4 x2 | 253 s | 0.10 h | 0.50 h |
 
 ## Kaggle kernel runtime
 
@@ -94,6 +99,14 @@ Source files: `results/env/kaggle_env_check.json` (from `scripts/env_check.py`) 
 | ultralytics | **not installed** (must be listed in a config's `kaggle.pip`) |
 | onnxruntime, openvino | not installed |
 | `/kaggle/input` | empty (no sources attached) |
+
+**Faster R-CNN step time on the T4 is bimodal** (P3.4, 2026-10-29). A training step whose padded
+batch shape has not been seen before in the session costs several seconds more than a repeat step.
+`scripts/estimate_frcnn_time.py` replays the seeded shuffle and predicts exactly which steps are slow,
+with no exceptions in `E0a_frcnn_timing_20261029-0552_2dd6526`. The fitted times are in
+`results/estimates/E1.json`. `cudnn.benchmark` is off (the PyTorch default), and the CUDA arch list
+includes sm_75, so this is neither autotuning nor PTX JIT. Which component pays the per-shape cost is
+not identified. The cost is paid once per shape, so it does not grow with the number of epochs.
 
 Consequences:
 
