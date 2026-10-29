@@ -75,6 +75,8 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-10-29 | `E0a_frcnn_timing_20261029-0552_2dd6526` (complete; **collected**) | GPU T4 x2 | 253 s | 0.10 h | 0.50 h |
 | 2026-10-29 | `E1_20261029-0601_da4e489` (`--resolve-only` path check) | CPU only (no GPU quota) | 48 s | 0 h | 0.50 h |
 | 2026-10-29 | `E1_20261029-0602_da4e489` (complete; **collected**) | GPU T4 x2 | 3023 s | 0.85 h | 1.35 h |
+| 2026-10-29 | `E0a_yolo_20261029-1531_6a64129` (`--resolve-only` path check) | CPU only (no GPU quota) | 62 s | 0 h | 1.35 h |
+| 2026-10-29 | `E0a_yolo_20261029-1534_6a64129` (complete; **collected**) | GPU T4 x2 | 145 s | 0.05 h | 1.40 h |
 
 ### Weight backups
 
