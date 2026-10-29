@@ -41,6 +41,15 @@ def test_collect_copies_small_files_and_writes_row(tmp_path: Path) -> None:
     assert b"\r" not in (tmp_path / "results" / "experiments.csv").read_bytes()
     (row,) = read_csv(tmp_path / "results" / "experiments.csv")
     assert row["exp_id"] == "E1" and row["map50"] == "0.61" and row["map_small"] == ""
+    assert row["median_iter_s"] == ""  # this log has no timing column
+
+
+def test_median_iter_s_comes_from_the_train_log(tmp_path: Path) -> None:
+    d = fake_run(tmp_path / "runs", "E1_20261028-0900_abc1234", 0.61)
+    # A slow first iteration (CUDA start-up) does not move the median.
+    (d / "train_log.csv").write_text("epoch,step,iter_s\n0,0,9.0\n0,1,0.5\n0,2,0.4\n0,3,0.6\n")
+    (row,) = collect(tmp_path / "runs", tmp_path / "results")
+    assert row["median_iter_s"] == pytest.approx(0.55)
 
 
 def test_rerun_is_idempotent_and_rows_are_sorted(tmp_path: Path) -> None:
