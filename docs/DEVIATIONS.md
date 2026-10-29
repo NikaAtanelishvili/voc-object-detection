@@ -294,3 +294,21 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** P7.5 shrinks to switching the repo to public and adding the model card. From now on, every
   run used later is backed up before its kernel is relaunched.
 - **ADR:** none
+
+### 2026-10-29 — P4.1: dataset root inside the run folder and removed after training
+- **Planned:** build a writable dataset root in `/kaggle/working/` (symlinked images, copied labels, fresh
+  `voc_yolo.yaml`), and have the runner record torch/torchvision before and after the install.
+- **Actual:**
+  - The root is `<run_dir>/dataset/`, built only from the frozen train/val ID lists (the test split never
+    reaches Ultralytics, and `limit_*_images` cuts the lists for smoke runs). It is deleted once training
+    ends.
+  - Ultralytics writes into `<run_dir>/ultralytics/`. Its `results.csv` is copied to `train_log.csv`, and
+    `weights/` is moved up to `<run_dir>/weights/`, the same layout as the Faster R-CNN runs.
+  - The torch guard needed no new code. `kaggle/templates/runner.py.j2` (P2.6) already pins
+    torch/torchvision with a pip constraints file, records them before and after, and exits if they differ.
+- **Reason:** without the deletion, every run would save ~11k symlinks and labels as kernel output. That
+  slows the output listing, which already hits HTTP 429 on the prep kernel (`kaggle_pull.py`). The root
+  is rebuilt in seconds.
+- **Impact:** none on results. A 1-epoch, 8-image CPU run with real Ultralytics found every label
+  through the symlinks ("8 images, 0 backgrounds, 0 corrupt").
+- **ADR:** none

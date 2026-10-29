@@ -353,7 +353,7 @@ map_large, mar_100, ap50_per_class{...}`. CLI: `vocdet eval --pred <json> --spli
 
 ### Phase 4 — YOLO26 experiments (Day 3 → Day 4)
 
-- [ ] **P4.1** `train/train_yolo.py`: maps our YAML config onto Ultralytics `train()` args (`data, epochs, imgsz,
+- [x] **P4.1** `train/train_yolo.py`: maps our YAML config onto Ultralytics `train()` args (`data, epochs, imgsz,
 batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the model default, augmentation
       keys, `project/name` inside the run dir). Saves the Ultralytics `results.csv` as `train_log.csv`.
       _Added (owner, 2026-10-28):_ installing the pinned ultralytics on Kaggle must not change the

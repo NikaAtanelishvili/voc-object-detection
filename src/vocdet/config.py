@@ -116,6 +116,47 @@ class FrcnnConfig(JobConfig):
     train: FrcnnTrainSettings
 
 
+class YoloAugmentSettings(BaseModel):
+    """Ultralytics augmentation hyperparameters. None keeps the Ultralytics default (E2, E3, E5);
+    E4 sets them to 0. Only these keys are allowed, so a typo cannot silently do nothing."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mosaic: float | None = None
+    mixup: float | None = None
+    hsv_h: float | None = None
+    hsv_s: float | None = None
+    hsv_v: float | None = None
+    scale: float | None = None
+    translate: float | None = None
+    fliplr: float | None = None
+
+
+class YoloTrainSettings(BaseModel):
+    """Arguments passed to Ultralytics `train()` (P4.1). The optimizer stays the model default."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    weights: str = Field(description="Ultralytics COCO weights to fine-tune, e.g. yolo26n.pt.")
+    epochs: int = Field(default=50, ge=1)
+    imgsz: int = 640
+    batch: int = Field(default=16, ge=1)
+    patience: int = Field(default=15, ge=0, description="Early-stopping epochs without val gain.")
+    freeze: int | None = Field(default=None, description="Freeze the first N layers (E5: 10).")
+    augment: YoloAugmentSettings = Field(default_factory=YoloAugmentSettings)
+    limit_train_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
+    limit_val_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
+
+
+class YoloConfig(JobConfig):
+    """E0a-yolo, E2-E5: YOLO26 fine-tuning. Unknown keys are errors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = 42
+    train: YoloTrainSettings
+
+
 class DataConfig(BaseModel):
     """configs/data/voc2012.yaml: where kernels find the prepared data."""
 
