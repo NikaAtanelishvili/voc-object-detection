@@ -98,7 +98,9 @@ def test_end_to_end_training_and_resume(prepared: tuple[Path, Path], tmp_path: P
         "weights/last.pt",
     ):
         assert (first / name).exists(), name  # fmt: skip
-    assert len(rows(first / "train_log.csv")) == 1  # one image, batch 1, one epoch
+    log = rows(first / "train_log.csv")
+    assert len(log) == 1  # one image, batch 1, one epoch
+    assert 0 <= float(log[0]["data_s"]) <= float(log[0]["iter_s"])  # data wait is part of the step
     assert rows(first / "val_log.csv")[0]["is_best"] == "True"
     assert metrics["num_images"] == 1
     assert json.loads((first / "metrics_val.json").read_text()) == metrics
@@ -107,7 +109,7 @@ def test_end_to_end_training_and_resume(prepared: tuple[Path, Path], tmp_path: P
 
     # A session that died during epoch 1 leaves log rows from it, after the epoch-0 last.pt.
     with (first / "train_log.csv").open("a") as f:
-        f.write("1,1,0.001,9.9,1,1,1,1,1.0\n")
+        f.write("1,1,0.001,9.9,1,1,1,1,1.0,0.1,0.5\n")
 
     # Resume as a 2-epoch run in a new, empty folder (a new Kaggle session): only epoch 1 is
     # trained, and the logs are carried over from the source run without the unfinished epoch.

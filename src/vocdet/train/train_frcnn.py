@@ -14,6 +14,7 @@ import logging
 import math
 import random
 import shutil
+import time
 from pathlib import Path
 
 import numpy as np
@@ -34,7 +35,7 @@ from vocdet.utils.seed import seed_everything, worker_init_fn
 logger = logging.getLogger(__name__)
 
 LOSS_NAMES = ("loss_classifier", "loss_box_reg", "loss_objectness", "loss_rpn_box_reg")
-TRAIN_LOG_COLUMNS = ("epoch", "step", "lr", "loss", *LOSS_NAMES, "grad_norm")
+TRAIN_LOG_COLUMNS = ("epoch", "step", "lr", "loss", *LOSS_NAMES, "grad_norm", "data_s", "iter_s")
 VAL_LOG_COLUMNS = ("epoch", "map50", "map50_95", "mar_100", "is_best")
 
 
@@ -67,7 +68,9 @@ def train_one_epoch(
     model.train()
     use_amp = cfg.amp and device.type == "cuda"
     params = [p for p in model.parameters() if p.requires_grad]
+    tick = time.perf_counter()
     for images, targets in loader:
+        data_s = time.perf_counter() - tick  # waiting for the loader; high means CPU-bound
         lr = lr_at(step, epoch, cfg)
         for group in optimizer.param_groups:
             group["lr"] = lr
@@ -92,11 +95,13 @@ def train_one_epoch(
         scaler.step(optimizer)  # skips the update if AMP found inf/NaN gradients
         scaler.update()
 
-        log_writer.writerow(
-            [epoch, step, f"{lr:.6g}", f"{loss.item():.5f}"]
-            + [f"{loss_dict[name].item():.5f}" for name in LOSS_NAMES]
-            + [f"{grad_norm.item():.4f}"]
-        )
+        # .item() waits for the GPU to finish, so the iteration time below is real, not queued.
+        row = [epoch, step, f"{lr:.6g}", f"{loss.item():.5f}"]
+        row += [f"{loss_dict[name].item():.5f}" for name in LOSS_NAMES]
+        row += [f"{grad_norm.item():.4f}"]
+        now = time.perf_counter()
+        log_writer.writerow(row + [f"{data_s:.4f}", f"{now - tick:.4f}"])
+        tick = now
         if step % 50 == 0:
             logger.info("epoch %d step %d lr %.5f loss %.4f", epoch, step, lr, loss.item())
         step += 1
