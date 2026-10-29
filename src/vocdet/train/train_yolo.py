@@ -85,6 +85,8 @@ def ultralytics_train_args(cfg: YoloConfig, dataset_yaml: Path, out_dir: Path) -
     }
     if t.freeze is not None:
         args["freeze"] = t.freeze
+    if t.close_mosaic is not None:
+        args["close_mosaic"] = t.close_mosaic
     args.update(t.augment.model_dump(exclude_none=True))
     return args
 

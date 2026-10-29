@@ -143,6 +143,11 @@ class YoloTrainSettings(BaseModel):
     batch: int = Field(default=16, ge=1)
     patience: int = Field(default=15, ge=0, description="Early-stopping epochs without val gain.")
     freeze: int | None = Field(default=None, description="Freeze the first N layers (E5: 10).")
+    close_mosaic: int | None = Field(
+        default=None,
+        description="Final epochs without mosaic (None = Ultralytics default 10). Timing runs "
+        "only: a 3-epoch run would otherwise never use mosaic.",
+    )
     augment: YoloAugmentSettings = Field(default_factory=YoloAugmentSettings)
     limit_train_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
     limit_val_images: int | None = Field(default=None, description="Smoke runs only (E0a).")

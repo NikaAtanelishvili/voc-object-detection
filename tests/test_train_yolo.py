@@ -123,6 +123,10 @@ def test_train_args_pass_only_what_the_config_sets(tmp_path: Path) -> None:
     args = ultralytics_train_args(e4, tmp_path / "data.yaml", tmp_path)
     assert args["mosaic"] == 0 and args["translate"] == 0 and "fliplr" not in args
     assert ultralytics_train_args(make_config(freeze=10), tmp_path, tmp_path)["freeze"] == 10
+    assert "close_mosaic" not in args
+    assert (
+        ultralytics_train_args(make_config(close_mosaic=1), tmp_path, tmp_path)["close_mosaic"] == 1
+    )
 
 
 def test_unknown_augmentation_key_is_an_error() -> None:
@@ -226,7 +230,7 @@ def test_crosscheck_counts_a_hit_on_a_difficult_object_as_false_positive(
     assert "differs from ours" in caplog.text
 
 
-@pytest.mark.parametrize("name", ["E0a_yolo"])
+@pytest.mark.parametrize("name", ["E0a_yolo", "E0a_yolo_timing_n", "E0a_yolo_timing_s"])
 def test_experiment_configs_are_valid(name: str) -> None:
     path = Path(__file__).resolve().parents[1] / "configs" / "experiments" / f"{name}.yaml"
     cfg = load_job_config(path, YoloConfig)

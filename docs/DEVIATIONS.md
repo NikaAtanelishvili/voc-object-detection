@@ -312,3 +312,18 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** none on results. A 1-epoch, 8-image CPU run with real Ultralytics found every label
   through the symlinks ("8 images, 0 backgrounds, 0 corrupt").
 - **ADR:** none
+
+### 2026-10-29 — P4.3: two full-data YOLO timing runs for the §5 estimates
+- **Planned:** P4.3 is the E0a-yolo smoke run (64 images, 1 epoch), and the §5 estimates are updated from it.
+- **Actual:** the smoke run `E0a_yolo_20261029-1534_6a64129` passed, but it has 4 iterations, too few to
+  extrapolate. Ultralytics also warned about slow image reads from the `/kaggle/input` mount, so the
+  epoch time on the full data may be I/O-bound and cannot be scaled from a small subset.
+  - Two GPU runs, `E0a_yolo_timing_n` and `E0a_yolo_timing_s`, train 3 epochs on the full train split
+    with full val.
+  - `close_mosaic: 1` (a new optional `YoloTrainSettings` field, None by default) makes epoch 2 a warm
+    mosaic epoch and epoch 3 a no-mosaic epoch. Otherwise a 3-epoch run never uses mosaic, because
+    Ultralytics closes it from epoch `epochs − close_mosaic`.
+- **Reason:** the estimates for E2 (1.5 h) and E3 (3.0 h) must rest on measured epochs (CLAUDE.md GPU
+  budget rule). This mirrors the P3.4 timing run.
+- **Impact:** about 0.4 GPU h from the 5 h buffer. No change to E2–E5 configs.
+- **ADR:** none
