@@ -452,3 +452,50 @@ only reloads and re-evaluates).
   - Effect 1 and the remaining gap are recorded per run in `run_meta.json`. They are quoted from there,
     or from the diagnostics JSON, by generated tables, never typed into this ADR.
 - **Pinned versions:** none added (`ultralytics==8.4.191`, ADR-010).
+
+---
+
+## ADR-014: Paired bootstrap for comparing runs
+
+- **Date:** 2026-10-31
+- **Status:** accepted
+- **Context:** val has 572 images. Separate per-run CIs overlap easily, and whether one point estimate
+  falls inside another run's CI does not test their difference: two models scored on the same images share
+  most of the resampling noise.
+- **Decision:** `scripts/bootstrap_ci.py` draws 200 image resamples from a fixed seed. Every run is scored
+  on the same draws with the one evaluator, on mAP50 and mAP50-95. Per-iteration scores are saved per run.
+  The delta CI is the 2.5th-97.5th percentile of the per-iteration differences, next to the full-val
+  difference (`results/paired_deltas.csv`). `delta_row` refuses runs scored with different settings.
+- **Alternatives considered:**
+  - Scoring all models together in one loop. Equivalent, but a new run would recompute everything.
+  - A permutation test. It answers a yes/no question and gives no interval for the size of the gap.
+- **Consequences:**
+  - All reports compare runs through delta CIs (`reports/EXPERIMENTS.md`).
+  - The interval covers image sampling only, not training randomness. One seed per run cannot show that.
+  - Comparing many pairs makes one interval excluding zero by chance more likely, so a borderline result
+    is treated as a hint.
+- **Pinned versions:** none added.
+
+---
+
+## ADR-015: What fine-tuned YOLO inherits from the COCO head
+
+- **Date:** 2026-10-31
+- **Status:** accepted
+- **Context:** E2 and E3 did not beat the zero-shot E0b, although all 20 VOC classes exist in COCO. A
+  fine-tune from a fresh head would explain that, so the initialisation was checked before E4/E5.
+- **Findings** (`results/diagnostics/finetune_vs_zeroshot.json`):
+  - Both runs start from the COCO `.pt`, not a model YAML.
+  - The class names in `best.pt` equal `VOC_CLASSES` in order, and the YOLO val labels match the annotation
+    table.
+  - Ultralytics 8.4.191 defaults to `cls_remap=True` (`nn/tasks.py::_remap_cls_by_names`), which copies COCO
+    classification head rows to the target class order, matching **names exactly**. E2 and E3 therefore
+    start with 14 of 20 rows from COCO. The 6 classes that VOC names differently (aeroplane, diningtable,
+    motorbike, pottedplant, sofa, tvmonitor) start with fresh rows. The log line
+    `Transferred 708/708` counts the remapped tensors, so it does not mean every row was copied.
+  - On per-class AP50 against E0b, the 6 fresh-row classes lose more than the 14 copied ones on average.
+    Single-class deltas are noisy on 572 images, so this is evidence, not proof.
+- **Decision:** E2 and E3 stand as run, and they are described as *partly* transplanted. Reports do not
+  call them fresh-head fine-tunes. Any experiment on head initialisation starts from this fact.
+- **Consequences:** a full transplant needs only those 6 rows.
+- **Pinned versions:** none added.

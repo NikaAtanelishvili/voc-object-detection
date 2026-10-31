@@ -340,3 +340,24 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** same files, same results. The E2 estimate keeps the slower timing-n overhead, so it stays
   an upper bound. The Ultralytics label scan is unchanged.
 - **ADR:** none
+
+### 2026-10-31 — P5.1: paired bootstrap of differences replaces per-run CI comparison
+- **Planned:** P5.1: a bootstrap 95% CI on val mAP50 for every run, reported in the comparison table.
+- **Actual:** at the owner's request, `scripts/bootstrap_ci.py` re-scores every run on the same resamples
+  and also on mAP50-95. `results/paired_deltas.csv` holds the 95% CI of the difference for each pair
+  (E2−E0b, E3−E0b, E2−E1, E3−E2, and E4/E5 once they exist). Per-run CIs stay in
+  `results/runs/<run_id>/bootstrap_ci.json`. All reports compare runs through the delta CIs. The planned
+  tests still hold, with added tests for pairing.
+- **Reason:** two models on the same images share most of their resampling noise, so "inside the other
+  model's CI" does not test a difference.
+- **Impact:** earlier statements that E2 sits inside the E0b or E1 CI are superseded. The new table
+  covers them.
+- **ADR:** ADR-014
+
+### 2026-10-31 — P4.4: head-initialisation checks added before E4/E5
+- **Planned:** E4 and E5 follow E2 and E3 directly.
+- **Actual:** at the owner's request, `scripts/finetune_vs_zeroshot.py` checks the head initialisation and
+  class order and computes per-class AP50 deltas against E0b (`results/diagnostics/finetune_vs_zeroshot.json`).
+- **Reason:** fine-tuned E2 and E3 did not beat the zero-shot model.
+- **Impact:** no GPU. It found that Ultralytics already copies 14 of the 20 COCO head rows (ADR-015).
+- **ADR:** ADR-015
