@@ -374,7 +374,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
       `model.val()` mAP50 on val as a **cross-check**. Explain any difference (interpolation, difficult handling) in
       an ADR. Our evaluator is authoritative.
 - [x] **P4.3** E0a-yolo smoke run: 64 images, 1 epoch. Update the §5 estimates.
-- [ ] **P4.4** E2 (YOLO26n) and E3 (YOLO26s). Launch E2. While it runs, work on P5.1 tooling. Then launch E3.
+- [x] **P4.4** E2 (YOLO26n) and E3 (YOLO26s). Launch E2. While it runs, work on P5.1 tooling. Then launch E3.
       Only one GPU kernel runs at a time because the quota is shared.
 - [ ] **P4.5** E4 augmentation ablation and E5 frozen backbone (configs per §5).
 - [ ] **P4.6** `make results` and regenerate the EXPERIMENTS tables. Add **ADR-003 Model selection** choosing the
