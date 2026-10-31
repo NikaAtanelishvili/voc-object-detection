@@ -81,6 +81,8 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-10-29 | `E0a_yolo_timing_s_20261029-1749_631ad4c` (complete; **collected**) | GPU T4 x2 | 419 s | 0.15 h | 2.00 h |
 | 2026-10-29 | `E2_20261029-1801_ae67b2f` (`--resolve-only` path check) | CPU only (no GPU quota) | 56 s | 0 h | 2.00 h |
 | 2026-10-29 | `E2_20261029-1808_ae67b2f` (complete; **collected**) | GPU T4 x2 | 3294 s | 0.95 h | 2.95 h |
+| 2026-10-29 | `E3_20261029-1931_dc8cbeb` (`--resolve-only` path check) | CPU only (no GPU quota) | 56 s | 0 h | 2.95 h |
+| 2026-10-29 | `E3_20261029-1933_dc8cbeb` (complete; **collected**) | GPU T4 x2 | 4309 s | 1.20 h | 4.15 h |
 
 ### Weight backups
 
@@ -93,6 +95,7 @@ path `<run_id>/weights/best.pt`, with a second copy in `runs/<run_id>/weights/` 
 |---|---|---|---|---|---|
 | 2026-10-29 | `E1_20261029-0602_da4e489` | `best.pt`, epoch 11, 76 395 617 B | `faa404c82337f5f75ce91c63ecf014bac8345f20fa06b66ed9254951e3eefe86` | `b6b13d6` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
 | 2026-10-29 | `E2_20261029-1808_ae67b2f` | `best.pt`, epoch 40 (Ultralytics-stripped), 5 452 165 B | `04144a025ef6e118f21b091fd43e3b200d68c0c59ce2add5c1d0985f94de9c48` | `d1c3fbf` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
+| 2026-10-31 | `E3_20261029-1933_dc8cbeb` | `best.pt`, epoch 45 (Ultralytics-stripped), 20 323 333 B | `14e9d191f7484fd57a24c90413046492a9c2077f15226894bac7e1d832befd6c` | `3c4da00` | Re-predicting val on CPU reproduces map50 exactly and map50_95 to within float rounding |
 
 ## Kaggle kernel runtime
 
