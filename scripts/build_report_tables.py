@@ -36,6 +36,23 @@ def experiments_table(csv_path: Path) -> str:
     return df.to_markdown(index=False, floatfmt=".3f")
 
 
+def deltas_table(csv_path: Path) -> str:
+    """Paired bootstrap differences (ADR-014), the only way two runs are compared in reports."""
+    df = pd.read_csv(csv_path)
+    experiment = df[["a", "b"]].replace(r"_\d{8}-\d{4}_[0-9a-f]{7}$", "", regex=True)
+    table = pd.DataFrame(
+        {
+            "Comparison": experiment["a"] + " − " + experiment["b"],
+            "Metric": df["metric"],
+            "Δ": df["delta"],
+            "CI95 low": df["ci95_low"],
+            "CI95 high": df["ci95_high"],
+            "CI excludes 0": df["excludes_zero"].map({True: "yes", False: "no"}),
+        }
+    )
+    return table.to_markdown(index=False, floatfmt="+.3f")
+
+
 def replace_block(text: str, name: str, content: str) -> str:
     """Put content between the name's markers; fail if the markers are missing or repeated."""
     # The block may be empty (a fresh report), so the END marker is matched without a newline.
@@ -48,8 +65,11 @@ def replace_block(text: str, name: str, content: str) -> str:
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     report = REPO_ROOT / "reports" / "EXPERIMENTS.md"
+    text = report.read_text()
     table = experiments_table(REPO_ROOT / "results" / "experiments.csv")
-    report.write_text(replace_block(report.read_text(), "experiments", table))
+    text = replace_block(text, "experiments", table)
+    text = replace_block(text, "deltas", deltas_table(REPO_ROOT / "results" / "paired_deltas.csv"))
+    report.write_text(text)
     logger.info("Updated %s", report)
     return 0
 

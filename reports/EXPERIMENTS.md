@@ -19,6 +19,16 @@ steps), not models.
 | E3_20261029-1933_dc8cbeb                | E3                |   0.819 |      0.659 |      0.333 |       0.512 |      0.731 |    0.757 |        4263.500 |
 <!-- END:experiments -->
 
+## Comparing runs
+
+Runs are compared only through a paired bootstrap of their difference (ADR-014): every run is re-scored on
+the same 200 image resamples of val, and the table gives the 95% CI of the per-resample difference.
+Overlap of two separate CIs is not used, because two models on the same images share most of their noise.
+Generated from `results/paired_deltas.csv` by `make report`.
+
+<!-- BEGIN:deltas -->
+<!-- END:deltas -->
+
 ## E1: Faster R-CNN MobileNetV3-L FPN baseline (Phase 3)
 
 Sources:
