@@ -27,6 +27,22 @@ Overlap of two separate CIs is not used, because two models on the same images s
 Generated from `results/paired_deltas.csv` by `make report`.
 
 <!-- BEGIN:deltas -->
+| Comparison              | Metric   |      Δ |   CI95 low |   CI95 high | CI excludes 0   |
+|:------------------------|:---------|-------:|-----------:|------------:|:----------------|
+| E2 − E0b                | map50    | -0.015 |     -0.032 |      +0.006 | no              |
+| E2 − E0b                | map50_95 | -0.006 |     -0.025 |      +0.013 | no              |
+| E3 − E0b                | map50    | -0.009 |     -0.033 |      +0.012 | no              |
+| E3 − E0b                | map50_95 | +0.009 |     -0.013 |      +0.031 | no              |
+| E2 − E1                 | map50    | +0.017 |     -0.005 |      +0.038 | no              |
+| E2 − E1                 | map50_95 | +0.096 |     +0.075 |      +0.115 | yes             |
+| E3 − E2                 | map50    | +0.007 |     -0.013 |      +0.025 | no              |
+| E3 − E2                 | map50_95 | +0.015 |     -0.004 |      +0.032 | no              |
+| E0a_yolo_timing_s − E3  | map50    | +0.039 |     +0.021 |      +0.063 | yes             |
+| E0a_yolo_timing_s − E3  | map50_95 | +0.030 |     +0.011 |      +0.052 | yes             |
+| E0a_yolo_timing_s − E0b | map50    | +0.031 |     +0.010 |      +0.050 | yes             |
+| E0a_yolo_timing_s − E0b | map50_95 | +0.039 |     +0.020 |      +0.058 | yes             |
+| E0a_yolo_timing_n − E2  | map50    | -0.003 |     -0.026 |      +0.018 | no              |
+| E0a_yolo_timing_n − E2  | map50_95 | -0.006 |     -0.024 |      +0.012 | no              |
 <!-- END:deltas -->
 
 ## E1: Faster R-CNN MobileNetV3-L FPN baseline (Phase 3)
