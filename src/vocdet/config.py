@@ -133,7 +133,8 @@ class YoloAugmentSettings(BaseModel):
 
 
 class YoloTrainSettings(BaseModel):
-    """Arguments passed to Ultralytics `train()` (P4.1). The optimizer stays the model default."""
+    """Arguments passed to Ultralytics `train()` (P4.1). Optimizer settings left as None keep the
+    model default ("auto"); only E6 sets them (ADR-015)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -148,13 +149,30 @@ class YoloTrainSettings(BaseModel):
         description="Final epochs without mosaic (None = Ultralytics default 10). Timing runs "
         "only: a 3-epoch run would otherwise never use mosaic.",
     )
+    optimizer: Literal["AdamW"] | None = Field(
+        default=None, description="Needed with lr0: Ultralytics' 'auto' ignores lr0 and momentum."
+    )
+    lr0: float | None = Field(default=None, gt=0)
+    momentum: float | None = None
+    warmup_epochs: float | None = Field(default=None, ge=0)
+    full_coco_head: bool = Field(
+        default=False,
+        description="Give the dataset YAML COCO's spelling of the 6 renamed classes, so cls_remap "
+        "copies all 20 COCO head rows instead of 14 (ADR-015).",
+    )
     augment: YoloAugmentSettings = Field(default_factory=YoloAugmentSettings)
     limit_train_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
     limit_val_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
 
+    @model_validator(mode="after")
+    def _lr_needs_an_explicit_optimizer(self) -> "YoloTrainSettings":
+        if (self.lr0 is not None or self.momentum is not None) and self.optimizer is None:
+            raise ValueError("lr0 and momentum need `optimizer`: Ultralytics' auto ignores them")
+        return self
+
 
 class YoloConfig(JobConfig):
-    """E0a-yolo, E2-E5: YOLO26 fine-tuning. Unknown keys are errors."""
+    """E0a-yolo, E2-E6: YOLO26 fine-tuning. Unknown keys are errors."""
 
     model_config = ConfigDict(extra="forbid")
 

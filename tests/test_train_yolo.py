@@ -13,9 +13,10 @@ from PIL import Image
 from pydantic import ValidationError
 
 from vocdet.config import YoloAugmentSettings, YoloConfig, load_job_config
-from vocdet.constants import VOC_CLASSES
+from vocdet.constants import COCO_NAMES_IN_VOC_ORDER, COCO_TO_VOC, VOC_CLASSES
 from vocdet.data.parse_voc import build_annotations
 from vocdet.eval.evaluator import evaluate
+from vocdet.eval.predict import build_class_map
 from vocdet.eval.schema import GroundTruth, Prediction, read_predictions
 from vocdet.train.train_yolo import (
     build_dataset_root,
@@ -231,10 +232,34 @@ def test_crosscheck_counts_a_hit_on_a_difficult_object_as_false_positive(
 
 
 @pytest.mark.parametrize(
-    "name", ["E0a_yolo", "E0a_yolo_timing_n", "E0a_yolo_timing_s", "E2", "E3", "E4", "E5"]
+    "name",
+    ["E0a_yolo", "E0a_yolo_timing_n", "E0a_yolo_timing_s", "E2", "E3", "E4", "E5", "E6s", "E6n"],
 )
 def test_experiment_configs_are_valid(name: str) -> None:
     path = Path(__file__).resolve().parents[1] / "configs" / "experiments" / f"{name}.yaml"
     cfg = load_job_config(path, YoloConfig)
     assert cfg.kaggle.pip == ["ultralytics==8.4.191"]
     assert "vocdet-prepare-data" in cfg.kaggle.sources
+
+
+def test_lr_without_an_explicit_optimizer_is_an_error() -> None:
+    with pytest.raises(ValidationError, match="auto ignores"):
+        make_config(lr0=0.0002)
+
+
+def test_gentle_settings_reach_ultralytics(tmp_path: Path) -> None:
+    cfg = make_config(optimizer="AdamW", lr0=0.0002, momentum=0.9, warmup_epochs=1.0)
+    args = ultralytics_train_args(cfg, tmp_path, tmp_path)
+    assert args["optimizer"] == "AdamW" and args["lr0"] == 0.0002
+    assert args["momentum"] == 0.9 and args["warmup_epochs"] == 1.0
+
+
+def test_coco_names_copy_all_20_head_rows_and_map_back_to_voc(prepared, tmp_path: Path) -> None:
+    data, _ = prepared
+    dataset_yaml = build_dataset_root(
+        data, tmp_path / "root", {"val": IDS["val"]}, COCO_NAMES_IN_VOC_ORDER
+    )
+    names = yaml.safe_load(dataset_yaml.read_text())["names"]
+    assert names[0] == "airplane" and names[10] == "dining table" and names[19] == "tv"
+    assert set(names.values()) == set(COCO_TO_VOC)  # every name matches a COCO head row
+    assert build_class_map(names) == {i: i for i in range(20)}  # class order stays VOC

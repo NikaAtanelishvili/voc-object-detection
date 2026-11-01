@@ -19,7 +19,7 @@ import pandas as pd
 import yaml
 
 from vocdet.config import YoloConfig
-from vocdet.constants import VOC_CLASSES
+from vocdet.constants import COCO_NAMES_IN_VOC_ORDER, VOC_CLASSES
 from vocdet.data.splits import load_splits
 from vocdet.eval.evaluator import evaluate, write_metrics
 from vocdet.eval.predict import predict_yolo
@@ -50,7 +50,12 @@ def link_image_copy_label(
     shutil.copyfile(labels / f"{image_id}.txt", out_labels / f"{image_id}.txt")
 
 
-def build_dataset_root(data_dir: Path, root: Path, split_ids: dict[str, list[str]]) -> Path:
+def build_dataset_root(
+    data_dir: Path,
+    root: Path,
+    split_ids: dict[str, list[str]],
+    names: tuple[str, ...] = VOC_CLASSES,
+) -> Path:
     """Create root/{images,labels}/<split>/ for the given IDs and return root/voc_yolo.yaml.
 
     Only the splits passed in are written, so the test split never reaches Ultralytics
@@ -82,7 +87,7 @@ def build_dataset_root(data_dir: Path, root: Path, split_ids: dict[str, list[str
 
     dataset_yaml = root / "voc_yolo.yaml"
     spec = {"path": str(root.resolve()), **{s: f"images/{s}" for s in split_ids}}
-    spec["names"] = dict(enumerate(VOC_CLASSES))
+    spec["names"] = dict(enumerate(names))
     dataset_yaml.write_text(yaml.safe_dump(spec, sort_keys=False))
     return dataset_yaml
 
@@ -90,8 +95,8 @@ def build_dataset_root(data_dir: Path, root: Path, split_ids: dict[str, list[str
 def ultralytics_train_args(cfg: YoloConfig, dataset_yaml: Path, out_dir: Path) -> dict:
     """Map our config onto Ultralytics `train()` keyword arguments (names checked against 8.4.191).
 
-    `optimizer` is not passed, so the model default ("auto") applies. Augmentation keys left as None
-    in the config are not passed either, so Ultralytics keeps its defaults for them.
+    Settings left as None in the config are not passed, so Ultralytics keeps its defaults for them:
+    optimizer "auto" (which ignores lr0 and momentum), and the augmentation values.
     """
     t = cfg.train
     args = {
@@ -107,10 +112,9 @@ def ultralytics_train_args(cfg: YoloConfig, dataset_yaml: Path, out_dir: Path) -
         "name": "ultralytics",
         "exist_ok": True,
     }
-    if t.freeze is not None:
-        args["freeze"] = t.freeze
-    if t.close_mosaic is not None:
-        args["close_mosaic"] = t.close_mosaic
+    for name in ("freeze", "close_mosaic", "optimizer", "lr0", "momentum", "warmup_epochs"):
+        if getattr(t, name) is not None:
+            args[name] = getattr(t, name)
     args.update(t.augment.model_dump(exclude_none=True))
     return args
 
@@ -176,7 +180,8 @@ def train_yolo(
         "val": splits["val"][: t.limit_val_images],
     }
     dataset_root = out_dir / "dataset"
-    dataset_yaml = build_dataset_root(data_dir, dataset_root, split_ids)
+    names = COCO_NAMES_IN_VOC_ORDER if t.full_coco_head else VOC_CLASSES
+    dataset_yaml = build_dataset_root(data_dir, dataset_root, split_ids, names)
 
     if load_model is None:
         from ultralytics import YOLO  # heavy import, only when actually training
