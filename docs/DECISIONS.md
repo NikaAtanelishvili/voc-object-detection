@@ -478,24 +478,47 @@ only reloads and re-evaluates).
 
 ---
 
-## ADR-015: What fine-tuned YOLO inherits from the COCO head
+## ADR-015: What fine-tuned YOLO inherits from COCO, and the gentle fine-tune (E6)
 
-- **Date:** 2026-10-31
-- **Status:** accepted
-- **Context:** E2 and E3 did not beat the zero-shot E0b, although all 20 VOC classes exist in COCO. A
-  fine-tune from a fresh head would explain that, so the initialisation was checked before E4/E5.
-- **Findings** (`results/diagnostics/finetune_vs_zeroshot.json`):
+- **Date:** 2026-10-31, revised 2026-11-01
+- **Status:** accepted. The forgetting explanation is a hypothesis under test (E5, E6), not a finding.
+- **Context:** E2 and E3 did not beat the zero-shot E0b (`results/paired_deltas.csv`), although all 20 VOC
+  classes exist in COCO. The initialisation was checked, and then a surprise was followed up: the 3-epoch
+  yolo26s timing run scored above both E3 and E0b.
+- **Findings on initialisation** (`results/diagnostics/finetune_vs_zeroshot.json`):
   - Both runs start from the COCO `.pt`, not a model YAML.
   - The class names in `best.pt` equal `VOC_CLASSES` in order, and the YOLO val labels match the annotation
     table.
-  - Ultralytics 8.4.191 defaults to `cls_remap=True` (`nn/tasks.py::_remap_cls_by_names`), which copies COCO
-    classification head rows to the target class order, matching **names exactly**. E2 and E3 therefore
-    start with 14 of 20 rows from COCO. The 6 classes that VOC names differently (aeroplane, diningtable,
-    motorbike, pottedplant, sofa, tvmonitor) start with fresh rows. The log line
+  - **Partial head copy.** Ultralytics 8.4.191 defaults to `cls_remap=True`
+    (`nn/tasks.py::_remap_cls_by_names`), which copies COCO classification head rows to the target class
+    order, matching **names exactly**. E2 to E5 therefore start with 14 of 20 rows from COCO. The log line
     `Transferred 708/708` counts the remapped tensors, so it does not mean every row was copied.
-  - On per-class AP50 against E0b, the 6 fresh-row classes lose more than the 14 copied ones on average.
-    Single-class deltas are noisy on 572 images, so this is evidence, not proof.
-- **Decision:** E2 and E3 stand as run, and they are described as *partly* transplanted. Reports do not
-  call them fresh-head fine-tunes. Any experiment on head initialisation starts from this fact.
-- **Consequences:** a full transplant needs only those 6 rows.
+  - **The 6 fresh classes.** aeroplane, diningtable, motorbike, pottedplant, sofa and tvmonitor are spelled
+    differently in COCO, so they start with fresh rows. On per-class AP50 against E0b they lose more than
+    the 14 copied classes on average. Single-class deltas are noisy on 572 images, so this is evidence,
+    not proof.
+- **Findings on the 3-epoch run** (`results/runs/E0a_yolo_timing_s_20261029-1749_631ad4c/train_log.csv`):
+  - It trained on the full 5145 images. Its Ultralytics arguments equal E3's except `epochs` and
+    `close_mosaic`, so the augmentation is the same, except that mosaic stopped for its last epoch.
+  - Warm-up lasted 2 epochs, not 3: `warmup_epochs = min(3, epochs - 1)`. Epoch 3 ran at the scheduled LR.
+  - Its logged LR peaked well below E3's, and fell in epoch 3 because the linear decay spans only 3 epochs.
+  - Almost all of its gain came in epoch 3, the one epoch with no mosaic.
+- **LR/forgetting hypothesis:** the COCO weights already suit these classes, and most of the fit comes from
+  COCO's much larger dataset. Long training at full LR on 5k images moves the weights away from that fit
+  faster than VOC data can replace it. A short, low-LR pass that ends without mosaic adapts the model
+  without that loss. E4 is consistent with this (without augmentation, its best epoch was the first), and
+  the 3-epoch yolo26n run does not show the gain, so the evidence is mixed.
+  - **E5** tests it by freezing the backbone: forgetting there is impossible.
+  - **E6s and E6n** test it by staying gentle, with all 20 rows copied.
+- **Decision (E6, "gentle fine-tune"):**
+  - `full_coco_head: true` writes COCO's spelling of the 6 renamed classes into the run's dataset YAML, so
+    `cls_remap` copies 20 of 20 rows (checked on a real CPU run). `build_class_map` maps the names back to
+    VOC indices, so class order and evaluation do not change.
+  - 8 epochs, AdamW with lr0 0.0002 (the warm-up-level LR of the 3-epoch run), 1 warm-up epoch, and no
+    mosaic for the last 3 epochs. An explicit optimizer is required because `auto` ignores `lr0`.
+- **Consequences:**
+  - E2 to E5 are described as *partly* transplanted, never as fresh-head fine-tunes.
+  - E6 was designed after seeing val results, so its val score is optimistic as a selection. The test split
+    stays unused until P5.2 (hard rule 4).
+  - One seed per run cannot separate this effect from training randomness.
 - **Pinned versions:** none added.

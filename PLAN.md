@@ -196,9 +196,11 @@ Epoch numbers are starting points. The smoke runs (P3.4/P4.3) measure seconds pe
 | E3  | YOLO26s                        | same as E2                                                                | Capacity vs speed                                     | 1.4 ²                   |
 | E4  | YOLO26n                        | minimal aug: mosaic=0, mixup=0, hsv=0, scale=0, translate=0 (fliplr kept) | What does augmentation buy?                           | 1.2 ²                   |
 | E5  | YOLO26n                        | freeze=10 (backbone frozen)                                               | Full fine-tune vs frozen backbone (cost/accuracy)     | 1.0                     |
+| E6s | YOLO26s                        | gentle: 20 COCO head rows, AdamW lr0 2e-4, 8 epochs, last 3 no mosaic     | Does a short low-LR pass keep the COCO fit? (ADR-015) | 0.3 ³                   |
+| E6n | YOLO26n                        | same as E6s                                                               | Same question, smallest model                         | 0.6 ³                   |
 | O\* | best model                     | export + GPU FP16/TensorRT bench (optional)                               | Optimization                                          | 0.5                     |
 | —   | buffer                         | reruns / failures / seed 43                                               |                                                       | 5.0                     |
-|     |                                |                                                                           | **Total budget**                                      | **~11.8 of ~30 weekly** |
+|     |                                |                                                                           | **Total budget**                                      | **~12.7 of ~30 weekly** |
 
 ¹ Updated in P3.4 (was 2.5). Training time comes from `results/estimates/E1.json`
 (`scripts/estimate_frcnn_time.py`: replayed batch shapes priced with the timing run
@@ -210,6 +212,9 @@ from `E0a_yolo_timing_n_20261029-1539_860a6b4` and `results/estimates/E3.json` f
 `E0a_yolo_timing_s_20261029-1749_631ad4c`, rounded up. The 26s timing session found the input mount
 warm, so E3 adds the 26n session's extra start-up (cold mount, about 0.25 h). E4 trains the same model
 for the same epochs as E2, with lighter augmentation, so E2's figure covers it.
+
+³ Added in P4.5 (DEVIATIONS 2026-11-01). Upper bounds from `results/estimates/E6s.json` and `E6n.json`, rounded
+up. E6s comes from a warm-mount session.
 
 The weekly Kaggle GPU quota is shown in Kaggle account settings (commonly about 30 h, but it floats). The human
 checks it in P0.5 and writes it into `docs/ENVIRONMENT.md`. Run data preparation and EDA on **CPU** kernels so

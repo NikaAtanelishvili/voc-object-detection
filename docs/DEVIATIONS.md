@@ -361,3 +361,15 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Reason:** fine-tuned E2 and E3 did not beat the zero-shot model.
 - **Impact:** no GPU. It found that Ultralytics already copies 14 of the 20 COCO head rows (ADR-015).
 - **ADR:** ADR-015
+
+### 2026-11-01 — P4.5: E6 gentle fine-tune added (E6s, E6n)
+- **Planned:** §5 ends at E5.
+- **Actual:** at the owner's request, two extra runs: yolo26s and yolo26n with all 20 COCO head rows, AdamW
+  lr0 0.0002, 8 epochs, no mosaic for the last 3. New optional config fields: `optimizer`, `lr0`, `momentum`,
+  `warmup_epochs`, `full_coco_head`. They replace the earlier E6 "head transplant" proposal, because
+  Ultralytics already copies 14 of the 20 rows.
+- **Reason:** the 3-epoch timing run beat E3 and E0b. See the hypothesis in ADR-015.
+- **Impact:** estimate 0.73 GPU h (`results/estimates/E6s.json`, `E6n.json`), within the owner's 1.5 h
+  pre-approval. Model selection in P4.6 now covers E6. Designed after seeing val, so its val score is
+  optimistic; the test split stays untouched.
+- **ADR:** ADR-015
