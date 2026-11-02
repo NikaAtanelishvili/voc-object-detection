@@ -1,10 +1,11 @@
 """estimate_yolo_time.py: epoch times from cumulative seconds, and the pricing formula."""
 
+import json
 from pathlib import Path
 
 import pytest
 
-from estimate_yolo_time import epoch_times, estimate_seconds
+from estimate_yolo_time import epoch_times, estimate_seconds, startup_costs
 
 
 def test_epoch_times_come_from_cumulative_seconds(tmp_path: Path) -> None:
@@ -25,3 +26,9 @@ def test_estimate_prices_mosaic_and_plain_epochs() -> None:
     assert estimate_seconds(100, 60, 50, 0, epochs=3, close_mosaic=1) == pytest.approx(210)
     # No mosaic epoch at all: the first epoch's start-up stays, its mosaic cost becomes plain.
     assert estimate_seconds(100, 60, 50, 0, epochs=2, close_mosaic=10) == pytest.approx(140)
+
+
+def test_startup_costs_separate_one_time_cost_from_a_normal_epoch(tmp_path: Path) -> None:
+    (tmp_path / "train_log.csv").write_text("epoch,time\n1,300\n2,350\n3,400\n")
+    (tmp_path / "kaggle_run.json").write_text(json.dumps({"wall_time_s": 850}))
+    assert startup_costs(tmp_path) == (250, 450)

@@ -12,6 +12,12 @@ Each epoch includes its val pass. The target run is priced as epoch 1, then its 
 epochs, then its close_mosaic plain epochs, plus everything in the kernel outside training (clone,
 pip, dataset root, final prediction and val), taken from the timing kernel's wall time. Early
 stopping (patience) can only shorten the run, so the result is an upper bound.
+
+--startup-run takes the one-time costs from another run. A timing run's start-up says nothing
+general: timing-n still paid the serial dataset-root build (fixed since), and timing-s found the
+input mount warm. Ultralytics' label scan alone took ~25 s in warm sessions and ~270 s in cold ones,
+before any model work, so a fair upper bound takes start-up from a recent cold run and epochs from
+the model's own timing run.
 """
 
 import argparse
@@ -32,6 +38,14 @@ def epoch_times(train_log: Path) -> tuple[float, float, float]:
     if len(cumulative) != 3:
         raise ValueError(f"{train_log}: expected 3 epochs of a timing run, got {len(cumulative)}")
     return cumulative[0], cumulative[1] - cumulative[0], cumulative[2] - cumulative[1]
+
+
+def startup_costs(run_dir: Path) -> tuple[float, float]:
+    """(extra seconds of the first epoch over the second, seconds outside training) of one run."""
+    with (run_dir / "train_log.csv").open(newline="") as f:
+        cumulative = [float(row["time"]) for row in csv.DictReader(f)]
+    kernel_s = json.loads((run_dir / "kaggle_run.json").read_text())["wall_time_s"]
+    return cumulative[0] - (cumulative[1] - cumulative[0]), kernel_s - cumulative[-1]
 
 
 def estimate_seconds(
@@ -56,28 +70,31 @@ def estimate_seconds(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--timing-run", type=Path, required=True, help="Pulled run folder.")
+    parser.add_argument("--startup-run", type=Path, help="Run to take one-time costs from.")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
 
     cfg = load_job_config(args.config, YoloConfig)
     first_s, mosaic_s, plain_s = epoch_times(args.timing_run / "train_log.csv")
-    with (args.timing_run / "train_log.csv").open(newline="") as f:
-        training_s = float(list(csv.DictReader(f))[-1]["time"])
-    kernel_s = json.loads((args.timing_run / "kaggle_run.json").read_text())["wall_time_s"]
+    extra_first_s, outside_s = startup_costs(args.timing_run)
+    if args.startup_run:
+        extra_first_s, outside_s = startup_costs(args.startup_run)
+        first_s = mosaic_s + extra_first_s
     close_mosaic = cfg.train.close_mosaic
     if close_mosaic is None:
         close_mosaic = ULTRALYTICS_CLOSE_MOSAIC
     seconds = estimate_seconds(
-        first_s, mosaic_s, plain_s, kernel_s - training_s, cfg.train.epochs, close_mosaic
+        first_s, mosaic_s, plain_s, outside_s, cfg.train.epochs, close_mosaic
     )
     result = {
         "timing_run": args.timing_run.name,
+        "startup_run": args.startup_run.name if args.startup_run else None,
         "config": str(args.config),
         "first_epoch_s": round(first_s, 1),
         "mosaic_epoch_s": round(mosaic_s, 1),
         "plain_epoch_s": round(plain_s, 1),
-        "outside_training_s": round(kernel_s - training_s, 1),
+        "outside_training_s": round(outside_s, 1),
         "epochs": cfg.train.epochs,
         "close_mosaic": close_mosaic,
         "gpu_hours_upper_bound": round(seconds / 3600, 3),

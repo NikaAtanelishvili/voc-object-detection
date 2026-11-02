@@ -373,3 +373,16 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
   pre-approval. Model selection in P4.6 now covers E6. Designed after seeing val, so its val score is
   optimistic; the test split stays untouched.
 - **ADR:** ADR-015
+
+### 2026-11-02 — P4.5: E6 estimates corrected before launch
+- **Planned:** the 2026-11-01 entry estimated E6s at 0.224 h and E6n at 0.504 h, so the bigger model looked
+  cheaper.
+- **Actual:** that was an error. E6n inherited timing-n's 1092 s outside training, which still contained
+  the ~655 s serial dataset-root build fixed in P4.3. E6s inherited timing-s's warm mount. Ultralytics'
+  label scan took ~25 s in the two warm sessions and ~270 s in E2, E4 and E5, before any model work, so
+  this one-time cost is not tied to the model. `estimate_yolo_time.py --startup-run` now takes one-time
+  costs from a recent cold run (E4) and epoch costs from the model's timing run.
+- **Reason:** the owner questioned the inverted estimates.
+- **Impact:** E6s 0.363 h and E6n 0.305 h, 0.668 h in total, still within the 1.5 h pre-approval. Why some
+  sessions find the mount warm is unknown.
+- **ADR:** none
