@@ -386,3 +386,22 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Impact:** E6s 0.363 h and E6n 0.305 h, 0.668 h in total, still within the 1.5 h pre-approval. Why some
   sessions find the mount warm is unknown.
 - **ADR:** none
+
+### 2026-11-06 — Phases 5–8: reordered to Phase 5 core → 7 → 8 → 6, with owner adjustments
+- **Planned:** Phases 5, 6, 7, 8 in order. P5.2 tests E1, E2, E3 and the selected model. P5.1 uses ~200
+  bootstrap iterations.
+- **Actual** (owner approval at the Phase 4 gate):
+  - **Order:** P5.2 → Phase 7 with a PyTorch-only `Detector` (the P6.2 interface pulled forward;
+    `--backend openvino-int8` waits for Phase 6) → Phase 8, with the rest of P5.1 and P5.3 feeding it →
+    Phase 6 last, which then swaps the Space to the fastest backend.
+  - **P5.2 models:** E0b, E1, E2, E3, E6s and E6n on test. E0b is required by ADR-003's revisit condition,
+    and E6n is the fallback. Paired test delta CIs for E6s−E0b, E6s−E3, E6s−E6n and E6s−E1.
+  - **Resamples:** final reported comparisons, on val and test, use at least 1000 bootstrap resamples.
+  - **Seed spread:** an extra GPU run, `E6s_seed43` (~0.4 h), evaluated on val only. Its seed-to-seed spread
+    is reported in the Phase 5 report. It does not replace E6s.
+  - **Reporting:** the README and the technical report describe E6 as post-hoc, designed after viewing
+    val, and let the test results carry the claim.
+- **Reason:** the project may be reviewed soon, so the live demo and README come first. 200 resamples give
+  unstable 95% CI endpoints.
+- **Impact:** the optimization results and the deployed backend change once more at the end. GPU +0.4 h.
+- **ADR:** ADR-003 and ADR-014 (resample count)
