@@ -96,3 +96,36 @@ Sources:
 - **Training dynamics.** The AMP gradient scaler skipped two steps with non-finite gradients, at the very
   start and once mid-run (`grad_norm` = inf in `train_log.csv`). Training was otherwise stable, with no
   NaN losses. Data loading was never the bottleneck (`data_s`).
+
+## Phase 4: YOLO26 experiments (E2–E6)
+
+Sources:
+- runs under `results/runs/<run_id>/` (config, metadata, Ultralytics `train_log.csv`, TIDE-lite errors);
+- paired differences in the table above (`results/paired_deltas.csv`, ADR-014);
+- head and class-order checks in `results/diagnostics/finetune_vs_zeroshot.json` (ADR-015);
+- the Ultralytics-vs-ours gap breakdown in `results/diagnostics/crosscheck_gap_*.json` (ADR-013).
+
+Every YOLO run starts from the COCO checkpoint. Ultralytics copies the COCO classification-head rows of the
+14 classes whose names match exactly; E6 copies all 20.
+
+**Observations.**
+- **Standard fine-tuning did not beat zero-shot.** E2 (YOLO26n) and E3 (YOLO26s), 50 epochs with the
+  default recipe, have paired CIs against the zero-shot E0b that include zero on both metrics. E3 is not
+  shown to beat E2 either. The 6 classes with fresh head rows lose more AP50 against E0b than the 14
+  copied ones.
+- **Fine-tuning still beats the two-stage baseline** on mAP50-95: E2 over E1 is the clearest
+  difference among the planned runs. On mAP50 the CI includes zero.
+- **Augmentation matters (E4).** Without mosaic, mixup, colour, scale and translate augmentation, YOLO26n
+  peaked in its first epoch and then early-stopped, and it is worse than both E2 and E0b, with CIs
+  excluding zero.
+- **A frozen backbone costs nothing measurable (E5).** Freezing the first 10 layers gives a model not
+  shown to differ from E2 or E0b, while training fewer parameters.
+- **Gentle fine-tuning works (E6).** Copying all 20 COCO head rows and training 8 epochs at a low LR, ending
+  without mosaic, gives the best model of the project (E6s). It beats E0b, E2, E3 and E6n with CIs
+  excluding zero on both metrics. E6n beats E2 on both metrics, and E0b on mAP50-95.
+  - This supports the forgetting hypothesis in ADR-015: long training at the default LR moves the weights
+    away from a COCO fit that already suits these classes.
+  - E6 was designed after seeing val results (the 3-epoch timing run), so its val score is optimistic as a
+    model-selection number. The test-split evaluation in P5.2 decides (ADR-003).
+- **Caveats.** One seed per configuration: the CIs cover image sampling, not training randomness. E6n ran
+  on Kaggle's newer image (CUDA 13.0 build of the same torch version), all other runs on the older one.
