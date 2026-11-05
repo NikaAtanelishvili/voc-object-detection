@@ -58,6 +58,7 @@ PAIRS = (
     ("E6n", "E2"),
     ("E6n", "E0b"),
     ("E6s", "E6n"),
+    ("E6s_seed43", "E6s"),
     ("E0a_yolo_timing_s", "E3"),
     ("E0a_yolo_timing_s", "E0b"),
     ("E0a_yolo_timing_n", "E2"),

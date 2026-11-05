@@ -92,6 +92,9 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-11-02 | `E6s_20261102-1659_3f5e706` (complete; **collected**; estimate was 0.363 h) | GPU T4 x2 | 1400 s | 0.40 h | 5.80 h |
 | 2026-11-05 | `E6n_20261105-2331_9f2f939` (`--resolve-only` path check) | CPU only (no GPU quota) | 51 s | 0 h | 5.80 h |
 | 2026-11-05 | `E6n_20261105-2334_9f2f939` (complete; **collected**; estimate was 0.305 h; new Kaggle image) | GPU T4 x2 | 980 s | 0.30 h | 6.10 h |
+| 2026-11-06 | `E6s_seed43_20261106-0011_ba39ce5` (`--resolve-only` path check) | CPU only (no GPU quota) | 60 s | 0 h | 6.10 h |
+| 2026-11-06 | `E6s_seed43_20261106-0014_ba39ce5` (complete; **collected**, val only; new Kaggle image) | GPU T4 x2 | 1093 s | 0.30 h | 6.40 h |
+| 2026-11-06 | `final_test_eval_20261106-0017_cfc221d` (P5.2 test evaluation) | CPU only (no GPU quota) | pending | 0 h | 6.40 h |
 
 ### Weight backups
 
@@ -109,6 +112,7 @@ path `<run_id>/weights/best.pt`, with a second copy in `runs/<run_id>/weights/` 
 | 2026-11-02 | `E5_20261101-1538_2c9ce61` | `best.pt`, epoch 29 (Ultralytics-stripped), 5 451 397 B | `97a0baf0cf63a83202149583da6cd17140eaf9a9e6f448d39bb4cdf54c77d12e` | `99635e7` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
 | 2026-11-05 | `E6s_20261102-1659_3f5e706` | `best.pt`, epoch 8 (Ultralytics-stripped; COCO-spelled names), 20 317 957 B | `abca25a6bdb9197439b094fcac0767425a8cf9a1b21d85dac87463537060eb66` | `f8bedb9` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
 | 2026-11-05 | `E6n_20261105-2334_9f2f939` | `best.pt`, epoch 8 (Ultralytics-stripped; COCO-spelled names), 5 446 789 B | `31e5182b0f0c675da77cc296f9c0c1c36c162f26cbfdf76801f9f5079cdb0246` | `18f42bb` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
+| 2026-11-06 | `E6s_seed43_20261106-0014_ba39ce5` | `best.pt`, epoch 8 (Ultralytics-stripped; COCO-spelled names), 20 317 957 B | `cf362b9a8304819ad0cfdbc659b913643f0c7494800dcc99c29a599014ec979b` | `6df875b` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
 
 ## Kaggle image change (found 2026-11-05)
 
