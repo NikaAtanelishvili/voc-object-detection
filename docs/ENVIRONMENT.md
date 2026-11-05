@@ -90,6 +90,8 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-11-01 | `E5_20261101-1538_2c9ce61` (complete; early stop at epoch 44; **collected**) | GPU T4 x2 | 2866 s | 0.80 h | 5.40 h |
 | 2026-11-02 | `E6s_20261102-1656_3f5e706` (`--resolve-only` path check) | CPU only (no GPU quota) | 55 s | 0 h | 5.40 h |
 | 2026-11-02 | `E6s_20261102-1659_3f5e706` (complete; **collected**; estimate was 0.363 h) | GPU T4 x2 | 1400 s | 0.40 h | 5.80 h |
+| 2026-11-05 | `E6n_20261105-2331_9f2f939` (`--resolve-only` path check) | CPU only (no GPU quota) | 51 s | 0 h | 5.80 h |
+| 2026-11-05 | `E6n_20261105-2334_9f2f939` (complete; **collected**; estimate was 0.305 h; new Kaggle image) | GPU T4 x2 | 980 s | 0.30 h | 6.10 h |
 
 ### Weight backups
 
@@ -106,6 +108,16 @@ path `<run_id>/weights/best.pt`, with a second copy in `runs/<run_id>/weights/` 
 | 2026-11-01 | `E4_20261031-2228_654138d` | `best.pt`, epoch 1 (Ultralytics-stripped), 5 447 813 B | `fb1c075e964b8040640dc78ac7015eb46ad8f34c4ce19037e06f57ff8841ad2a` | `9f0ad80` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
 | 2026-11-02 | `E5_20261101-1538_2c9ce61` | `best.pt`, epoch 29 (Ultralytics-stripped), 5 451 397 B | `97a0baf0cf63a83202149583da6cd17140eaf9a9e6f448d39bb4cdf54c77d12e` | `99635e7` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
 | 2026-11-05 | `E6s_20261102-1659_3f5e706` | `best.pt`, epoch 8 (Ultralytics-stripped; COCO-spelled names), 20 317 957 B | `abca25a6bdb9197439b094fcac0767425a8cf9a1b21d85dac87463537060eb66` | `f8bedb9` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
+| 2026-11-05 | `E6n_20261105-2334_9f2f939` | `best.pt`, epoch 8 (Ultralytics-stripped; COCO-spelled names), 5 446 789 B | `31e5182b0f0c675da77cc296f9c0c1c36c162f26cbfdf76801f9f5079cdb0246` | `18f42bb` | Re-predicting val on CPU reproduces `metrics_val.json` exactly (map50 and map50_95) |
+
+## Kaggle image change (found 2026-11-05)
+
+Kaggle replaced its GPU image between E6s (2026-11-02) and E6n (2026-11-05). From each run's `run_meta.json`:
+Python 3.13.15 → **3.13.16**, torch/torchvision `2.11.0+cu128`/`0.26.0+cu128` → `2.11.0+cu130`/`0.26.0+cu130`.
+Every package we pin (torchmetrics, pycocotools, ultralytics, numpy) is unchanged. The runner's guard compares
+versions before and after our pip install *within* a run, so it passed correctly. It cannot see Kaggle changing
+the base image between runs. E6n is the only run on the new image, a small confound when comparing it with the
+others. Weights evaluated locally (CPU) are unaffected.
 
 ## Kaggle kernel runtime
 
@@ -119,7 +131,7 @@ Source files: `results/env/kaggle_env_check.json` (from `scripts/env_check.py`) 
 | OS | Linux 6.18.55, glibc 2.39 |
 | CPU cores | 4 |
 | GPU | 2 × Tesla T4 (sm_75, 15360 MiB each), driver 580.178.04 |
-| torch | 2.11.0+cu128 (CUDA 12.8, cuDNN 9.19.0) |
+| torch | 2.11.0+cu128 (CUDA 12.8, cuDNN 9.19.0); **2.11.0+cu130 from E6n on** (see below) |
 | torch CUDA arch list | sm_75, sm_80, sm_86, sm_90, sm_100, sm_120 |
 | CUDA matmul smoke test | passed |
 | torchvision | 0.26.0+cu128 |
