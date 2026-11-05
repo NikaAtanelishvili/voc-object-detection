@@ -1,0 +1,16 @@
+# Canonical run per experiment: exp_id -> run_id. `make results` collects exactly these runs and
+# experiments.csv has one row per entry. Superseded runs and path checks stay out by not being listed.
+# Add a line here when a run is accepted; replacing a run_id is a decision worth a commit message.
+E0a_frcnn: E0a_frcnn_20261029-0548_0256862
+E0a_frcnn_timing: E0a_frcnn_timing_20261029-0552_2dd6526
+E0b: E0b_20261028-0321_fa7911f
+E1: E1_20261029-0602_da4e489
+E0a_yolo: E0a_yolo_20261029-1534_6a64129
+E0a_yolo_timing_n: E0a_yolo_timing_n_20261029-1539_860a6b4
+E0a_yolo_timing_s: E0a_yolo_timing_s_20261029-1749_631ad4c
+E2: E2_20261029-1808_ae67b2f
+E3: E3_20261029-1933_dc8cbeb
+E4: E4_20261031-2228_654138d
+E5: E5_20261101-1538_2c9ce61
+E6s: E6s_20261102-1659_3f5e706
+E6n: E6n_20261105-2334_9f2f939

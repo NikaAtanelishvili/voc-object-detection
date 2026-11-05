@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from build_report_tables import experiments_table, replace_block
+from build_report_tables import deltas_table, experiments_table, replace_block
 
 
 def test_replace_block_keeps_hand_written_text_and_is_idempotent() -> None:
@@ -30,3 +30,13 @@ def test_experiments_table_formats_metrics(tmp_path: Path) -> None:
     )
     table = experiments_table(csv)
     assert "| E1_x " in table and "0.712" in table and "mAP50-95" in table
+
+
+def test_deltas_table_names_experiments_and_signs_values(tmp_path: Path) -> None:
+    path = tmp_path / "paired_deltas.csv"
+    path.write_text(
+        "a,b,metric,delta,ci95_low,ci95_high,excludes_zero\n"
+        "E2_20261029-1808_ae67b2f,E0b_20261028-0321_fa7911f,map50,-0.0154,-0.03,0.002,False\n"
+    )
+    table = deltas_table(path)
+    assert "E2 − E0b" in table and "-0.015" in table and "+0.002" in table and "| no" in table

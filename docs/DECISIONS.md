@@ -95,6 +95,40 @@ order they are written, so the plan's references stay valid.
 
 ---
 
+## ADR-003: Model selection (deployment candidate)
+
+- **Date:** 2026-11-06
+- **Status:** accepted for Phases 5–7. Revisited if the P5.2 test results or the Phase 6 latency check
+  disagree.
+- **Context:** P4.6 picks the deployment candidate by val mAP50 against CPU cost. The service runs on a free
+  Hugging Face CPU Space, so latency per image matters as well as accuracy.
+- **Evidence:**
+  - Accuracy: `results/paired_deltas.csv` (paired bootstrap, ADR-014) and `results/experiments.csv`.
+  - CPU cost: `results/diagnostics/cpu_cost_quick.json` (`scripts/quick_cpu_cost.py`), with parameter count
+    and median batch-1 latency on the development laptop. It ranks candidates; it is not the Phase 6
+    benchmark.
+- **Decision: E6s (YOLO26s, gentle fine-tune) is the deployment candidate. E6n is the fallback.**
+  - E6s has the highest val mAP50 and mAP50-95 of all runs. Its paired delta CIs exclude zero against E0b,
+    E2, E3 and E6n, on both metrics.
+  - E6s is several times faster than Faster R-CNN (E1) on CPU, with about half its parameters. It is
+    slower than E6n by roughly the ratio of their sizes.
+  - E6n is the fallback if E6s misses the Phase 6 latency target on the Space's CPU. It beats E2 with a CI
+    that excludes zero, but on mAP50 it is not shown to beat the zero-shot E0b.
+- **Caveats:**
+  - E6 was designed *after* looking at val results (ADR-015), so its val score is optimistic as a selection.
+    The P5.2 test evaluation decides. If E6s does not beat E0b and E3 on test, the choice is revisited.
+  - E6n ran on Kaggle's newer image (`docs/ENVIRONMENT.md`), and E6s on the old one.
+  - One seed per configuration. The CIs cover image sampling, not training randomness.
+- **Alternatives considered:**
+  - E0b (zero-shot, no training): simplest, but E6s beats it with a CI that excludes zero.
+  - E3 (the planned YOLO26s recipe): same cost as E6s, lower accuracy.
+  - E1 (Faster R-CNN): slowest on CPU and least accurate on mAP50-95.
+- **Consequences:** P5.2 evaluates E1, E2, E3 (as planned) and E6s on test once. Phase 6 exports E6s first,
+  and E6n only if needed.
+- **Pinned versions:** none added.
+
+---
+
 ## ADR-005: Python 3.11 floor
 
 - **Date:** 2026-10-28
@@ -366,8 +400,9 @@ Procedure, with `DEAD` as the dead run ID (e.g. `E1_20261029-1430_abc1234`):
 5. Launch the GPU resume:
    `uv run python scripts/kaggle_run.py --config configs/experiments/E1.yaml --resume-from $DEAD`,
    then `make kaggle-pull RUN=<printed run_id>`.
-6. Collect only the resumed run (`make results`). The dead run's `run_meta.json` still says `running`, so
-   the collector refuses it. Charge both sessions in the GPU usage log in `docs/ENVIRONMENT.md`.
+6. Collect only the resumed run: list its run_id in `results/canonical_runs.yaml`, then `make results`.
+   The dead run's `run_meta.json` still says `running`, so the collector would refuse it if it were
+   listed. Charge both sessions in the GPU usage log in `docs/ENVIRONMENT.md`.
 
 **What is verified and what is not.** Kernel sources mounting another kernel's output: verified (prep
 data, ADR-011). A failed version keeps its `/kaggle/working` outputs when the *script exits with an
@@ -391,4 +426,133 @@ only reloads and re-evaluates).
   was saved. Resume kernels add extra kernels (`vocdet-e1-from-...`) to the Kaggle account. The pull
   pattern keeps weights on Kaggle, so `last.pt` lives only in the kernel output. Deleting a kernel
   deletes its checkpoints.
+- **Pinned versions:** none added.
+
+---
+
+## ADR-013: Ultralytics val as a cross-check for our evaluator
+
+- **Date:** 2026-10-29
+- **Status:** accepted. The size of each effect is measured in every YOLO run, not assumed (see
+  Consequences).
+- **Context:** P4.2 asks for Ultralytics' own `model.val()` mAP next to ours for every fine-tuned YOLO
+  model, with an explanation of any difference. ADR-008 makes our evaluator (torchmetrics + pycocotools)
+  authoritative for every model. A second scorer catches adapter bugs (class map, box scaling, image IDs)
+  that one evaluator cannot see in its own input.
+- **Decision:**
+  - `train/train_yolo.py::ultralytics_val_crosscheck` runs `best.val(data=<run's voc_yolo.yaml>,
+    split="val")` with the run's `imgsz` and `batch`, and leaves `conf` (0.001 for val), `iou` (0.7),
+    and `max_det` (300) at the Ultralytics 8.4.191 defaults. It writes four numbers to
+    `run_meta.json → ultralytics_val_crosscheck`:
+    - `ultralytics_map50` and `ultralytics_map50_95`, from Ultralytics;
+    - `ours_map50_difficult_removed` and `ours_map50_95_difficult_removed`, which are our predictions
+      scored by our evaluator against ground truth with the difficult objects removed.
+  - The authoritative numbers stay in `metrics_val.json` (predict_yolo → evaluate, difficult objects
+    as ignore regions).
+  - A gap of more than `CROSSCHECK_TOLERANCE` (0.05 map50) between `ultralytics_map50` and
+    `ours_map50_difficult_removed` logs a warning. The run is then checked by hand before its numbers
+    are used. The first value, 0.02, fired on a healthy run (see the measured breakdown below). An
+    adapter bug (a shifted class map, unscaled boxes, mixed-up image IDs) costs tens of points, so 0.05
+    still catches it.
+- **Why the two scores differ.** Candidate causes were read in the Ultralytics 8.4.191 code and ADR-008:
+  1. **Difficult objects.** The YOLO labels leave them out (`data/export_yolo.py`), so for Ultralytics a
+     detection on one is a false positive. Our evaluator passes them as `iscrowd`, so it ignores such a
+     detection. Every run isolates this effect: `metrics_val.json map50 − ours_map50_difficult_removed`.
+  2. **AP metric.** Ultralytics linearly interpolates the precision envelope and integrates with the
+     trapezoid rule (`utils/metrics.py::compute_ap`). pycocotools averages step values at 101 recall
+     points. Matching is the same greedy, confidence-ordered rule in both
+     (`BaseValidator.match_predictions`, default path).
+  3. **Detection cap.** We keep 100 per image (PLAN.md §4); Ultralytics val keeps up to 300.
+  4. **Inference path.** `model.val()` loads images through its dataloader into rectangular batches,
+     with half-stride padding. `predict()` letterboxes each image on its own.
+- **Measured** by `scripts/diagnose_crosscheck_gap.py` on the yolo26n timing run's `best.pt` (CPU, which
+  reproduces the Kaggle numbers). Output: `results/diagnostics/crosscheck_gap_E0a_yolo_timing_n_20261029-1539_860a6b4.json`.
+  - Ultralytics' metric applied to *our* predictions lands very close to our evaluator, and keeping 300
+    detections barely moves it. So effects 2 and 3 are small, and our adapter and evaluator agree with
+    Ultralytics on the same boxes.
+  - Rect batch padding (batch 16 vs 1) is also small.
+  - Nearly the whole gap is effect 4: Ultralytics' val pipeline scores higher than Ultralytics' own
+    `predict()` on the same weights.
+  - We keep scoring the `predict()` path, because it is what the deployed service runs (Phase 7) and
+    how Faster R-CNN is scored. The val-pipeline gain is a property of Ultralytics' evaluation code,
+    not of the model we ship.
+- **Alternatives considered:**
+  - Training YOLO labels with difficult objects included. That changes the training data relative to
+    Faster R-CNN, which never trains on difficult objects (`data/dataset.py`), so it was rejected.
+  - Using only Ultralytics' number for YOLO models. Then the two model families would be scored by
+    different code, and the comparison would be meaningless (ADR-008).
+- **Consequences:**
+  - Each YOLO run costs one extra val pass (seconds on a T4).
+  - Effect 1 and the remaining gap are recorded per run in `run_meta.json`. They are quoted from there,
+    or from the diagnostics JSON, by generated tables, never typed into this ADR.
+- **Pinned versions:** none added (`ultralytics==8.4.191`, ADR-010).
+
+---
+
+## ADR-014: Paired bootstrap for comparing runs
+
+- **Date:** 2026-10-31
+- **Status:** accepted
+- **Context:** val has 572 images. Separate per-run CIs overlap easily, and whether one point estimate
+  falls inside another run's CI does not test their difference: two models scored on the same images share
+  most of the resampling noise.
+- **Decision:** `scripts/bootstrap_ci.py` draws 200 image resamples from a fixed seed. Every run is scored
+  on the same draws with the one evaluator, on mAP50 and mAP50-95. Per-iteration scores are saved per run.
+  The delta CI is the 2.5th-97.5th percentile of the per-iteration differences, next to the full-val
+  difference (`results/paired_deltas.csv`). `delta_row` refuses runs scored with different settings.
+- **Alternatives considered:**
+  - Scoring all models together in one loop. Equivalent, but a new run would recompute everything.
+  - A permutation test. It answers a yes/no question and gives no interval for the size of the gap.
+- **Consequences:**
+  - All reports compare runs through delta CIs (`reports/EXPERIMENTS.md`).
+  - The interval covers image sampling only, not training randomness. One seed per run cannot show that.
+  - Comparing many pairs makes one interval excluding zero by chance more likely, so a borderline result
+    is treated as a hint.
+- **Pinned versions:** none added.
+
+---
+
+## ADR-015: What fine-tuned YOLO inherits from COCO, and the gentle fine-tune (E6)
+
+- **Date:** 2026-10-31, revised 2026-11-01
+- **Status:** accepted. The forgetting explanation is a hypothesis under test (E5, E6), not a finding.
+- **Context:** E2 and E3 did not beat the zero-shot E0b (`results/paired_deltas.csv`), although all 20 VOC
+  classes exist in COCO. The initialisation was checked, and then a surprise was followed up: the 3-epoch
+  yolo26s timing run scored above both E3 and E0b.
+- **Findings on initialisation** (`results/diagnostics/finetune_vs_zeroshot.json`):
+  - Both runs start from the COCO `.pt`, not a model YAML.
+  - The class names in `best.pt` equal `VOC_CLASSES` in order, and the YOLO val labels match the annotation
+    table.
+  - **Partial head copy.** Ultralytics 8.4.191 defaults to `cls_remap=True`
+    (`nn/tasks.py::_remap_cls_by_names`), which copies COCO classification head rows to the target class
+    order, matching **names exactly**. E2 to E5 therefore start with 14 of 20 rows from COCO. The log line
+    `Transferred 708/708` counts the remapped tensors, so it does not mean every row was copied.
+  - **The 6 fresh classes.** aeroplane, diningtable, motorbike, pottedplant, sofa and tvmonitor are spelled
+    differently in COCO, so they start with fresh rows. On per-class AP50 against E0b they lose more than
+    the 14 copied classes on average. Single-class deltas are noisy on 572 images, so this is evidence,
+    not proof.
+- **Findings on the 3-epoch run** (`results/runs/E0a_yolo_timing_s_20261029-1749_631ad4c/train_log.csv`):
+  - It trained on the full 5145 images. Its Ultralytics arguments equal E3's except `epochs` and
+    `close_mosaic`, so the augmentation is the same, except that mosaic stopped for its last epoch.
+  - Warm-up lasted 2 epochs, not 3: `warmup_epochs = min(3, epochs - 1)`. Epoch 3 ran at the scheduled LR.
+  - Its logged LR peaked well below E3's, and fell in epoch 3 because the linear decay spans only 3 epochs.
+  - Almost all of its gain came in epoch 3, the one epoch with no mosaic.
+- **LR/forgetting hypothesis:** the COCO weights already suit these classes, and most of the fit comes from
+  COCO's much larger dataset. Long training at full LR on 5k images moves the weights away from that fit
+  faster than VOC data can replace it. A short, low-LR pass that ends without mosaic adapts the model
+  without that loss. E4 is consistent with this (without augmentation, its best epoch was the first), and
+  the 3-epoch yolo26n run does not show the gain, so the evidence is mixed.
+  - **E5** tests it by freezing the backbone: forgetting there is impossible.
+  - **E6s and E6n** test it by staying gentle, with all 20 rows copied.
+- **Decision (E6, "gentle fine-tune"):**
+  - `full_coco_head: true` writes COCO's spelling of the 6 renamed classes into the run's dataset YAML, so
+    `cls_remap` copies 20 of 20 rows (checked on a real CPU run). `build_class_map` maps the names back to
+    VOC indices, so class order and evaluation do not change.
+  - 8 epochs, AdamW with lr0 0.0002 (the warm-up-level LR of the 3-epoch run), 1 warm-up epoch, and no
+    mosaic for the last 3 epochs. An explicit optimizer is required because `auto` ignores `lr0`.
+- **Consequences:**
+  - E2 to E5 are described as *partly* transplanted, never as fresh-head fine-tunes.
+  - E6 was designed after seeing val results, so its val score is optimistic as a selection. The test split
+    stays unused until P5.2 (hard rule 4).
+  - One seed per run cannot separate this effect from training randomness.
 - **Pinned versions:** none added.

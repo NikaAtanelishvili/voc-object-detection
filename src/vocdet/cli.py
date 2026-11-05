@@ -118,6 +118,11 @@ def main(argv: list[str] | None = None) -> int:
         "<run_id>/weights/last.pt under /kaggle/input (ADR-012).",
     )
 
+    ty = sub.add_parser("train-yolo", help="Fine-tune YOLO26 with Ultralytics (E0a-yolo, E2-E5).")
+    ty.add_argument("--config", type=Path, required=True)
+    add_data_dir_arguments(ty)
+    ty.add_argument("--out-dir", type=Path, help="Run folder (default: runs/<run_id>).")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -237,6 +242,19 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         out_dir = args.out_dir or Path("runs") / resolve_run_id(cfg.exp_id)
         train_frcnn(cfg, args.config, data_dir, out_dir, resume=resume)
+        return 0
+    if args.command == "train-yolo":
+        from vocdet.config import YoloConfig, load_job_config
+        from vocdet.train.train_yolo import train_yolo
+        from vocdet.utils.run_meta import resolve_run_id
+
+        cfg = load_job_config(args.config, YoloConfig)
+        data_dir = resolve_data_dir(args)
+        if args.resolve_only:
+            print(f"Prepared data: {data_dir}")  # noqa: T201  (CLI output)
+            return 0
+        out_dir = args.out_dir or Path("runs") / resolve_run_id(cfg.exp_id)
+        train_yolo(cfg, args.config, data_dir, out_dir)
         return 0
     parser.print_help()
     return 0

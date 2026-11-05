@@ -264,3 +264,125 @@ Every departure from `PLAN.md` is logged here at the moment it happens (CLAUDE.m
 - **Reason:** P3.6 cannot meet its "generated tables, no typed numbers" criterion without the generator.
 - **Impact:** P5.1 shrinks by one table. No change to any result.
 - **ADR:** none
+
+### 2026-10-29 — before P4.1: results are collected from a canonical-run manifest
+- **Planned:** PLAN.md §2: `scripts/collect_results.py` copies each run's small files into
+  `results/runs/<run_id>/` and appends one row per run to `results/experiments.csv`. With no arguments
+  it collected every finished run in `runs/`.
+- **Actual:** `results/canonical_runs.yaml` (committed) maps each experiment ID to its one canonical
+  run_id. The collector reads only this manifest (the positional run_id arguments are gone), and
+  `experiments.csv` holds exactly one row per manifest entry. It checks that each run's `exp_id` matches
+  its key. When `runs/` lacks a run, as in a fresh clone, it uses the committed `results/runs/` copy.
+  ADR-012 step 6 now says to list the resumed run in the manifest.
+- **Reason:** re-verifying the Phase 3 gate showed that a bare `make results` also collected three
+  superseded runs still in `runs/` (E0a 0544, the 0552 resume check, E0b 0318). A superseded flag would
+  require editing pulled run folders. The owner chose a committed manifest, which states the choice once
+  and in git.
+- **Impact:** no change to any result. `make results && make report` reproduce the committed
+  `experiments.csv`, `results/runs/` and `reports/EXPERIMENTS.md` byte for byte. From Phase 4 on, every
+  accepted run gets a manifest line in its `exp` commit.
+- **ADR:** none (ADR-012 step 6 updated)
+
+### 2026-10-29 — before P4.1: HF model repo created early (private) for the E1 weight backup
+- **Planned:** P7.5 [MANUAL]: the owner creates the public model repo `<user>/vocdet-models`, and weights
+  are uploaded there in Phase 7.
+- **Actual:** at the owner's request, the agent created `nikaata007/vocdet-models` as a **private** repo
+  with the existing `HF_TOKEN`, and uploaded `E1_20261029-0602_da4e489/weights/best.pt`. The sha256 of
+  the upload matches the local copy (`docs/ENVIRONMENT.md` → Weight backups).
+- **Reason:** the E1 weights existed only in the `vocdet-e1` kernel output, which a rerun would replace,
+  and P5.2 needs them.
+- **Impact:** P7.5 shrinks to switching the repo to public and adding the model card. From now on, every
+  run used later is backed up before its kernel is relaunched.
+- **ADR:** none
+
+### 2026-10-29 — P4.1: dataset root inside the run folder and removed after training
+- **Planned:** build a writable dataset root in `/kaggle/working/` (symlinked images, copied labels, fresh
+  `voc_yolo.yaml`), and have the runner record torch/torchvision before and after the install.
+- **Actual:**
+  - The root is `<run_dir>/dataset/`, built only from the frozen train/val ID lists (the test split never
+    reaches Ultralytics, and `limit_*_images` cuts the lists for smoke runs). It is deleted once training
+    ends.
+  - Ultralytics writes into `<run_dir>/ultralytics/`. Its `results.csv` is copied to `train_log.csv`, and
+    `weights/` is moved up to `<run_dir>/weights/`, the same layout as the Faster R-CNN runs.
+  - The torch guard needed no new code. `kaggle/templates/runner.py.j2` (P2.6) already pins
+    torch/torchvision with a pip constraints file, records them before and after, and exits if they differ.
+- **Reason:** without the deletion, every run would save ~11k symlinks and labels as kernel output. That
+  slows the output listing, which already hits HTTP 429 on the prep kernel (`kaggle_pull.py`). The root
+  is rebuilt in seconds.
+- **Impact:** none on results. A 1-epoch, 8-image CPU run with real Ultralytics found every label
+  through the symlinks ("8 images, 0 backgrounds, 0 corrupt").
+- **ADR:** none
+
+### 2026-10-29 — P4.3: two full-data YOLO timing runs for the §5 estimates
+- **Planned:** P4.3 is the E0a-yolo smoke run (64 images, 1 epoch), and the §5 estimates are updated from it.
+- **Actual:** the smoke run `E0a_yolo_20261029-1534_6a64129` passed, but it has 4 iterations, too few to
+  extrapolate. Ultralytics also warned about slow image reads from the `/kaggle/input` mount, so the
+  epoch time on the full data may be I/O-bound and cannot be scaled from a small subset.
+  - Two GPU runs, `E0a_yolo_timing_n` and `E0a_yolo_timing_s`, train 3 epochs on the full train split
+    with full val.
+  - `close_mosaic: 1` (a new optional `YoloTrainSettings` field, None by default) makes epoch 2 a warm
+    mosaic epoch and epoch 3 a no-mosaic epoch. Otherwise a 3-epoch run never uses mosaic, because
+    Ultralytics closes it from epoch `epochs − close_mosaic`.
+- **Reason:** the estimates for E2 (1.5 h) and E3 (3.0 h) must rest on measured epochs (CLAUDE.md GPU
+  budget rule). This mirrors the P3.4 timing run.
+- **Impact:** about 0.4 GPU h from the 5 h buffer. No change to E2–E5 configs.
+- **ADR:** none
+
+### 2026-10-29 — P4.3: dataset root built with a thread pool
+- **Planned:** P4.1's dataset root (symlinked images, copied labels). It was built one file at a time.
+- **Actual:** the kernel log of `E0a_yolo_timing_n_20261029-1539_860a6b4` shows ~655 s spent building the
+  root for 5717 images (~0.1 s per file operation on the `/kaggle/input` mount), before training started.
+  Ultralytics' own label scan then took another ~315 s. `build_dataset_root` now resolves each source
+  folder once and runs the per-image symlink and label copy in a 32-thread pool. Each step waits on the
+  mount, not the CPU. The build time is logged.
+- **Reason:** about 0.18 GPU h per YOLO kernel, spent while the GPU sat idle. Five more YOLO kernels are
+  planned (E3 timing, E2–E5).
+- **Impact:** same files, same results. The E2 estimate keeps the slower timing-n overhead, so it stays
+  an upper bound. The Ultralytics label scan is unchanged.
+- **ADR:** none
+
+### 2026-10-31 — P5.1: paired bootstrap of differences replaces per-run CI comparison
+- **Planned:** P5.1: a bootstrap 95% CI on val mAP50 for every run, reported in the comparison table.
+- **Actual:** at the owner's request, `scripts/bootstrap_ci.py` re-scores every run on the same resamples
+  and also on mAP50-95. `results/paired_deltas.csv` holds the 95% CI of the difference for each pair
+  (E2−E0b, E3−E0b, E2−E1, E3−E2, and E4/E5 once they exist). Per-run CIs stay in
+  `results/runs/<run_id>/bootstrap_ci.json`. All reports compare runs through the delta CIs. The planned
+  tests still hold, with added tests for pairing.
+- **Reason:** two models on the same images share most of their resampling noise, so "inside the other
+  model's CI" does not test a difference.
+- **Impact:** earlier statements that E2 sits inside the E0b or E1 CI are superseded. The new table
+  covers them.
+- **ADR:** ADR-014
+
+### 2026-10-31 — P4.4: head-initialisation checks added before E4/E5
+- **Planned:** E4 and E5 follow E2 and E3 directly.
+- **Actual:** at the owner's request, `scripts/finetune_vs_zeroshot.py` checks the head initialisation and
+  class order and computes per-class AP50 deltas against E0b (`results/diagnostics/finetune_vs_zeroshot.json`).
+- **Reason:** fine-tuned E2 and E3 did not beat the zero-shot model.
+- **Impact:** no GPU. It found that Ultralytics already copies 14 of the 20 COCO head rows (ADR-015).
+- **ADR:** ADR-015
+
+### 2026-11-01 — P4.5: E6 gentle fine-tune added (E6s, E6n)
+- **Planned:** §5 ends at E5.
+- **Actual:** at the owner's request, two extra runs: yolo26s and yolo26n with all 20 COCO head rows, AdamW
+  lr0 0.0002, 8 epochs, no mosaic for the last 3. New optional config fields: `optimizer`, `lr0`, `momentum`,
+  `warmup_epochs`, `full_coco_head`. They replace the earlier E6 "head transplant" proposal, because
+  Ultralytics already copies 14 of the 20 rows.
+- **Reason:** the 3-epoch timing run beat E3 and E0b. See the hypothesis in ADR-015.
+- **Impact:** estimate 0.73 GPU h (`results/estimates/E6s.json`, `E6n.json`), within the owner's 1.5 h
+  pre-approval. Model selection in P4.6 now covers E6. Designed after seeing val, so its val score is
+  optimistic; the test split stays untouched.
+- **ADR:** ADR-015
+
+### 2026-11-02 — P4.5: E6 estimates corrected before launch
+- **Planned:** the 2026-11-01 entry estimated E6s at 0.224 h and E6n at 0.504 h, so the bigger model looked
+  cheaper.
+- **Actual:** that was an error. E6n inherited timing-n's 1092 s outside training, which still contained
+  the ~655 s serial dataset-root build fixed in P4.3. E6s inherited timing-s's warm mount. Ultralytics'
+  label scan took ~25 s in the two warm sessions and ~270 s in E2, E4 and E5, before any model work, so
+  this one-time cost is not tied to the model. `estimate_yolo_time.py --startup-run` now takes one-time
+  costs from a recent cold run (E4) and epoch costs from the model's timing run.
+- **Reason:** the owner questioned the inverted estimates.
+- **Impact:** E6s 0.363 h and E6n 0.305 h, 0.668 h in total, still within the 1.5 h pre-approval. Why some
+  sessions find the mount warm is unknown.
+- **ADR:** none

@@ -116,6 +116,70 @@ class FrcnnConfig(JobConfig):
     train: FrcnnTrainSettings
 
 
+class YoloAugmentSettings(BaseModel):
+    """Ultralytics augmentation hyperparameters. None keeps the Ultralytics default (E2, E3, E5);
+    E4 sets them to 0. Only these keys are allowed, so a typo cannot silently do nothing."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mosaic: float | None = None
+    mixup: float | None = None
+    hsv_h: float | None = None
+    hsv_s: float | None = None
+    hsv_v: float | None = None
+    scale: float | None = None
+    translate: float | None = None
+    fliplr: float | None = None
+
+
+class YoloTrainSettings(BaseModel):
+    """Arguments passed to Ultralytics `train()` (P4.1). Optimizer settings left as None keep the
+    model default ("auto"); only E6 sets them (ADR-015)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    weights: str = Field(description="Ultralytics COCO weights to fine-tune, e.g. yolo26n.pt.")
+    epochs: int = Field(default=50, ge=1)
+    imgsz: int = 640
+    batch: int = Field(default=16, ge=1)
+    patience: int = Field(default=15, ge=0, description="Early-stopping epochs without val gain.")
+    freeze: int | None = Field(default=None, description="Freeze the first N layers (E5: 10).")
+    close_mosaic: int | None = Field(
+        default=None,
+        description="Final epochs without mosaic (None = Ultralytics default 10). Timing runs "
+        "only: a 3-epoch run would otherwise never use mosaic.",
+    )
+    optimizer: Literal["AdamW"] | None = Field(
+        default=None, description="Needed with lr0: Ultralytics' 'auto' ignores lr0 and momentum."
+    )
+    lr0: float | None = Field(default=None, gt=0)
+    momentum: float | None = None
+    warmup_epochs: float | None = Field(default=None, ge=0)
+    full_coco_head: bool = Field(
+        default=False,
+        description="Give the dataset YAML COCO's spelling of the 6 renamed classes, so cls_remap "
+        "copies all 20 COCO head rows instead of 14 (ADR-015).",
+    )
+    augment: YoloAugmentSettings = Field(default_factory=YoloAugmentSettings)
+    limit_train_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
+    limit_val_images: int | None = Field(default=None, description="Smoke runs only (E0a).")
+
+    @model_validator(mode="after")
+    def _lr_needs_an_explicit_optimizer(self) -> "YoloTrainSettings":
+        if (self.lr0 is not None or self.momentum is not None) and self.optimizer is None:
+            raise ValueError("lr0 and momentum need `optimizer`: Ultralytics' auto ignores them")
+        return self
+
+
+class YoloConfig(JobConfig):
+    """E0a-yolo, E2-E6: YOLO26 fine-tuning. Unknown keys are errors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = 42
+    train: YoloTrainSettings
+
+
 class DataConfig(BaseModel):
     """configs/data/voc2012.yaml: where kernels find the prepared data."""
 

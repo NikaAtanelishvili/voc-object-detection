@@ -1,0 +1,12 @@
+{
+  "timing_run": "E0a_yolo_timing_s_20261029-1749_631ad4c",
+  "config": "configs/experiments/E3.yaml",
+  "first_epoch_s": 115.9,
+  "mosaic_epoch_s": 77.7,
+  "plain_epoch_s": 77.5,
+  "outside_training_s": 148.3,
+  "epochs": 50,
+  "close_mosaic": 10,
+  "gpu_hours_upper_bound": 1.13,
+  "note": "upper bound: early stopping (patience) can only shorten the run"
+}

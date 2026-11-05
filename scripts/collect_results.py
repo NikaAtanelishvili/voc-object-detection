@@ -1,11 +1,13 @@
-"""Collect finished runs into results/: small artifacts per run, one experiments.csv row each.
+"""Collect the canonical runs into results/: small artifacts per run, one experiments.csv row each.
 
-Usage: uv run python scripts/collect_results.py [run_id ...]   (default: every run in runs/)
+Usage: uv run python scripts/collect_results.py   (reads results/canonical_runs.yaml)
 
-For each run, copies config.yaml, run_meta.json, metrics_val.json (as metrics.json) and, if
-under 1 MB, train_log.csv into results/runs/<run_id>/. Predictions and weights stay in runs/ (hard
-rule 2). experiments.csv is then rebuilt from all of results/runs/, so rerunning is idempotent: one
-row per run, sorted by run_id.
+The manifest maps each experiment ID to its one canonical run_id, so superseded runs and path checks
+that are still in runs/ never reach the results. For each listed run, copies config.yaml,
+run_meta.json, metrics_val.json (as metrics.json) and, if under 1 MB, train_log.csv into
+results/runs/<run_id>/. A run already in results/ but not in runs/ (a fresh clone) is used as
+committed. Predictions and weights stay in runs/ (hard rule 2). experiments.csv is then rebuilt from
+the listed runs only, so rerunning is idempotent: one row per experiment, sorted by run_id.
 """
 
 import argparse
@@ -17,9 +19,13 @@ import statistics
 import sys
 from pathlib import Path
 
+import yaml
+from pydantic import TypeAdapter
+
 logger = logging.getLogger("collect_results")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = REPO_ROOT / "results" / "canonical_runs.yaml"
 REQUIRED = ("config.yaml", "run_meta.json", "metrics_val.json")
 MAX_LOG_BYTES = 1_000_000
 METRIC_COLUMNS = ("map50", "map50_95", "map_small", "map_medium", "map_large", "mar_100")
@@ -31,6 +37,16 @@ COLUMNS = (
 
 class IncompleteRunError(RuntimeError):
     """A run folder lacks a file of the run artifact contract (PLAN.md §2)."""
+
+
+class ManifestError(ValueError):
+    """canonical_runs.yaml names a run that does not exist or belongs to another experiment."""
+
+
+def load_manifest(path: Path) -> dict[str, str]:
+    """Read the exp_id -> run_id mapping; pydantic rejects anything that is not str -> str."""
+    with path.open() as f:
+        return TypeAdapter(dict[str, str]).validate_python(yaml.safe_load(f) or {})
 
 
 def collect_run(run_dir: Path, results_runs: Path) -> Path:
@@ -85,8 +101,8 @@ def experiment_row(result_dir: Path) -> dict:
     return row
 
 
-def rebuild_experiments_csv(results_runs: Path, csv_path: Path) -> list[dict]:
-    rows = [experiment_row(d) for d in sorted(results_runs.iterdir()) if d.is_dir()]
+def rebuild_experiments_csv(result_dirs: list[Path], csv_path: Path) -> list[dict]:
+    rows = [experiment_row(d) for d in sorted(result_dirs)]
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="") as f:
         # lineterminator: csv defaults to "\r\n", which shows up as noise in git diffs.
@@ -96,24 +112,35 @@ def rebuild_experiments_csv(results_runs: Path, csv_path: Path) -> list[dict]:
     return rows
 
 
-def collect(runs_dir: Path, results_dir: Path, run_ids: list[str] | None = None) -> list[dict]:
-    """Collect the given runs (default: every run with metrics_val.json); rebuild the CSV."""
-    if run_ids is None:
-        run_ids = sorted(d.name for d in runs_dir.iterdir() if (d / "metrics_val.json").exists())
-    for run_id in run_ids:
-        dest = collect_run(runs_dir / run_id, results_dir / "runs")
-        logger.info("Collected %s -> %s", run_id, dest)
-    return rebuild_experiments_csv(results_dir / "runs", results_dir / "experiments.csv")
+def collect(runs_dir: Path, results_dir: Path, manifest: dict[str, str]) -> list[dict]:
+    """Collect every run named in the manifest; rebuild the CSV from exactly those runs."""
+    result_dirs = []
+    for exp_id, run_id in manifest.items():
+        if (runs_dir / run_id).is_dir():
+            dest = collect_run(runs_dir / run_id, results_dir / "runs")
+            logger.info("Collected %s -> %s", run_id, dest)
+        else:
+            dest = results_dir / "runs" / run_id
+            if not dest.is_dir():
+                raise ManifestError(f"{exp_id}: {run_id} is in neither runs/ nor results/runs/")
+        meta_exp_id = json.loads((dest / "run_meta.json").read_text())["exp_id"]
+        if meta_exp_id != exp_id:
+            raise ManifestError(f"{exp_id}: {run_id} is a run of {meta_exp_id!r}")
+        result_dirs.append(dest)
+
+    listed = {d.name for d in result_dirs}
+    for d in sorted((results_dir / "runs").iterdir()):
+        if d.is_dir() and d.name not in listed:
+            logger.warning("%s is not in the manifest; left out of experiments.csv", d)
+    return rebuild_experiments_csv(result_dirs, results_dir / "experiments.csv")
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "run_ids", nargs="*", help="Run IDs under runs/ (default: all with metrics)"
-    )
+    parser.add_argument("--manifest", type=Path, default=MANIFEST, help="exp_id -> run_id YAML")
     args = parser.parse_args()
-    rows = collect(REPO_ROOT / "runs", REPO_ROOT / "results", args.run_ids or None)
+    rows = collect(REPO_ROOT / "runs", REPO_ROOT / "results", load_manifest(args.manifest))
     print(f"results/experiments.csv: {len(rows)} runs")
     return 0
 

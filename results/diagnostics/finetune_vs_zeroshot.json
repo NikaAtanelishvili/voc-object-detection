@@ -1,0 +1,92 @@
+{
+  "init": {
+    "E2": {
+      "weights": "yolo26n.pt",
+      "log": [
+        "Downloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt",
+        "Overriding model.yaml nc=80 with nc=20",
+        "Remapped 14/20 cls head rows from pretrained weights by class name",
+        "Transferred 708/708 items from pretrained weights"
+      ]
+    },
+    "E3": {
+      "weights": "yolo26s.pt",
+      "log": [
+        "Downloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt",
+        "Overriding model.yaml nc=80 with nc=20",
+        "Remapped 14/20 cls head rows from pretrained weights by class name",
+        "Transferred 708/708 items from pretrained weights",
+        "Downloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt"
+      ]
+    }
+  },
+  "names_equal_voc_classes": {
+    "E2": true,
+    "E3": true
+  },
+  "val_images_with_label_class_mismatch": 0,
+  "fresh_head_classes": [
+    "aeroplane",
+    "diningtable",
+    "motorbike",
+    "pottedplant",
+    "sofa",
+    "tvmonitor"
+  ],
+  "ap50_delta_vs_E0b": {
+    "E2": {
+      "aeroplane": -0.02515655755996704,
+      "bicycle": 0.008157610893249512,
+      "bird": 0.03645122051239014,
+      "boat": -0.017989754676818848,
+      "bottle": -0.019182443618774414,
+      "bus": -0.004904508590698242,
+      "car": 0.08288413286209106,
+      "cat": -0.020403742790222168,
+      "chair": 0.017020702362060547,
+      "cow": -0.008082151412963867,
+      "diningtable": -0.04182034730911255,
+      "dog": -0.018755972385406494,
+      "horse": 0.0008438229560852051,
+      "motorbike": -0.02118992805480957,
+      "person": -0.029467761516571045,
+      "pottedplant": -0.07844558358192444,
+      "sheep": -0.04783385992050171,
+      "sofa": -0.029858827590942383,
+      "train": -0.0520210862159729,
+      "tvmonitor": -0.03833192586898804
+    },
+    "E3": {
+      "aeroplane": 0.013383746147155762,
+      "bicycle": -0.019808828830718994,
+      "bird": 0.002886950969696045,
+      "boat": 0.0332716703414917,
+      "bottle": 0.07286679744720459,
+      "bus": 0.03649091720581055,
+      "car": 0.1294264793395996,
+      "cat": 0.053287506103515625,
+      "chair": 0.036710500717163086,
+      "cow": -0.0953594446182251,
+      "diningtable": -0.12031340599060059,
+      "dog": -0.038920462131500244,
+      "horse": -0.001132369041442871,
+      "motorbike": -0.07175946235656738,
+      "person": -0.00016838312149047852,
+      "pottedplant": 0.05033472180366516,
+      "sheep": -0.16440057754516602,
+      "sofa": -0.035129547119140625,
+      "train": -0.029907941818237305,
+      "tvmonitor": -0.023006021976470947
+    }
+  },
+  "ap50_delta_vs_E0b_group_means": {
+    "E2": {
+      "fresh_head_row": -0.039133861660957336,
+      "copied_head_row": -0.005234556538718087
+    },
+    "E3": {
+      "fresh_head_row": -0.031081661581993103,
+      "copied_head_row": 0.0010887725012642996
+    }
+  }
+}

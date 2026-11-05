@@ -49,3 +49,9 @@ COCO_TO_VOC: dict[str, str] = {
     "train": "train",
     "tv": "tvmonitor",
 }
+
+# VOC class order, spelled as COCO spells it. As dataset names, these let Ultralytics' cls_remap
+# match every class and copy all 20 COCO head rows (ADR-015). build_class_map maps them back.
+COCO_NAMES_IN_VOC_ORDER: tuple[str, ...] = tuple(
+    {voc: coco for coco, voc in COCO_TO_VOC.items()}[name] for name in VOC_CLASSES
+)

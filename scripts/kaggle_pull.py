@@ -25,6 +25,7 @@ RUNS_DIR = REPO_ROOT / "runs"
 RUNNING_STATES = {"QUEUED", "RUNNING", "NEW_SCRIPT"}
 MAX_PAGE_SIZE = 200  # the CLI's documented maximum for `kernels output --page-size`
 RETRY_PAUSE_S = 120
+MAX_STATUS_FAILURES = 5  # consecutive failed status calls before the wait gives up
 
 
 def parse_status(cli_output: str) -> str:
@@ -35,17 +36,34 @@ def parse_status(cli_output: str) -> str:
     return match.group(1).rsplit(".", 1)[-1].upper()
 
 
-def wait_for_kernel(kernel_id: str, poll_s: int) -> str:
-    """Poll until the kernel leaves the queued/running states; return the final state."""
+def wait_for_kernel(kernel_id: str, poll_s: int, sleep=time.sleep) -> str:
+    """Poll until the kernel leaves the queued/running states; return the final state.
+
+    A long run means dozens of status calls, and the API occasionally fails one (both 26n and 26s
+    timing pulls died that way on 2026-10-29 while the kernels ran on). A failed call is retried at
+    the next poll; only MAX_STATUS_FAILURES failures in a row abort the wait.
+    """
+    failures = 0
     while True:
-        out = subprocess.run(
-            ["kaggle", "kernels", "status", kernel_id], check=True, capture_output=True, text=True
-        ).stdout
-        status = parse_status(out)
+        proc = subprocess.run(
+            ["kaggle", "kernels", "status", kernel_id], capture_output=True, text=True
+        )
+        if proc.returncode != 0:
+            failures += 1
+            if failures >= MAX_STATUS_FAILURES:
+                raise RuntimeError(
+                    f"`kaggle kernels status {kernel_id}` failed {failures} times in a row: "
+                    f"{proc.stderr.strip() or proc.stdout.strip()}"
+                )
+            logger.warning("Status check failed (%d in a row); retrying in %ds", failures, poll_s)
+            sleep(poll_s)
+            continue
+        failures = 0
+        status = parse_status(proc.stdout)
         if status not in RUNNING_STATES:
             return status
         logger.info("%s is %s; checking again in %ds", kernel_id, status, poll_s)
-        time.sleep(poll_s)
+        sleep(poll_s)
 
 
 def download_outputs(kernel_id: str, pull_pattern: str | None) -> None:
