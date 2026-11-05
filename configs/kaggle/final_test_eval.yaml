@@ -1,0 +1,15 @@
+# P5.2: the single test-split evaluation of the final models (hard rule 4). CPU kernel: no GPU quota, and
+# it survives a lost local session. Weights come from the training kernels' outputs, attached as sources.
+exp_id: final_test_eval
+kaggle:
+  command: python scripts/final_test_eval.py predict --data-dir kaggle --out-dir {run_dir}
+  gpu: false
+  pip: ["ultralytics==8.4.191"]
+  sources:
+    - vocdet-prepare-data
+    - vocdet-e1
+    - vocdet-e2
+    - vocdet-e3
+    - vocdet-e6s
+    - vocdet-e6n
+  pull_pattern: '(kaggle_run\.json|command\.log|model\.json|metrics_test\.json|predictions_test\.json)$'
