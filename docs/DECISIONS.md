@@ -496,10 +496,20 @@ only reloads and re-evaluates).
 - **Context:** val has 572 images. Separate per-run CIs overlap easily, and whether one point estimate
   falls inside another run's CI does not test their difference: two models scored on the same images share
   most of the resampling noise.
-- **Decision:** `scripts/bootstrap_ci.py` draws 200 image resamples from a fixed seed. Every run is scored
+- **Decision:** `scripts/bootstrap_ci.py` draws 1000 image resamples from a fixed seed (200 until
+  2026-11-06; too few for stable 95% endpoints, owner). Every run is scored
   on the same draws with the one evaluator, on mAP50 and mAP50-95. Per-iteration scores are saved per run.
   The delta CI is the 2.5th-97.5th percentile of the per-iteration differences, next to the full-val
   difference (`results/paired_deltas.csv`). `delta_row` refuses runs scored with different settings.
+- **Fast scoring** (added 2026-11-06, `eval/resample.py::MatchedImages`): pycocotools' per-image
+  matching (`COCOeval.evaluate`) does not depend on which other images are drawn, so it runs once per
+  run, on COCO objects built by torchmetrics' own conversion. Each draw rebuilds the per-image list in
+  draw order and runs pycocotools' `accumulate`. `tests/test_resample.py` checks equality with `evaluate()`
+  on explicit resamples, to float32 precision, since torchmetrics returns float32. It is about 100× faster,
+  which makes 1000 draws affordable on the 5823-image test split. It relies on torchmetrics' private
+  `_get_coco_datasets`, pinned with `torchmetrics==1.9.0`.
+- **Test split:** `--split test` re-scores only predictions that `final_test_eval.py` saved (no new test
+  evaluation), for the owner's test pairs (E6s against E0b, E3, E6n and E1).
 - **Alternatives considered:**
   - Scoring all models together in one loop. Equivalent, but a new run would recompute everything.
   - A permutation test. It answers a yes/no question and gives no interval for the size of the gap.

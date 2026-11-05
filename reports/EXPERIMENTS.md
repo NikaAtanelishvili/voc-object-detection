@@ -26,47 +26,47 @@ steps), not models.
 ## Comparing runs
 
 Runs are compared only through a paired bootstrap of their difference (ADR-014): every run is re-scored on
-the same 200 image resamples of val, and the table gives the 95% CI of the per-resample difference.
+the same 1000 image resamples of val, and the table gives the 95% CI of the per-resample difference.
 Overlap of two separate CIs is not used, because two models on the same images share most of their noise.
 Generated from `results/paired_deltas.csv` by `make report`.
 
 <!-- BEGIN:deltas -->
 | Comparison              | Metric   |      Δ |   CI95 low |   CI95 high | CI excludes 0   |
 |:------------------------|:---------|-------:|-----------:|------------:|:----------------|
-| E2 − E0b                | map50    | -0.015 |     -0.032 |      +0.006 | no              |
-| E2 − E0b                | map50_95 | -0.006 |     -0.025 |      +0.013 | no              |
-| E3 − E0b                | map50    | -0.009 |     -0.033 |      +0.012 | no              |
-| E3 − E0b                | map50_95 | +0.009 |     -0.013 |      +0.031 | no              |
-| E2 − E1                 | map50    | +0.017 |     -0.005 |      +0.038 | no              |
-| E2 − E1                 | map50_95 | +0.096 |     +0.075 |      +0.115 | yes             |
-| E3 − E2                 | map50    | +0.007 |     -0.013 |      +0.025 | no              |
-| E3 − E2                 | map50_95 | +0.015 |     -0.004 |      +0.032 | no              |
-| E4 − E2                 | map50    | -0.049 |     -0.078 |      -0.021 | yes             |
-| E4 − E2                 | map50_95 | -0.053 |     -0.076 |      -0.027 | yes             |
-| E4 − E0b                | map50    | -0.065 |     -0.086 |      -0.038 | yes             |
+| E2 − E0b                | map50    | -0.015 |     -0.035 |      +0.006 | no              |
+| E2 − E0b                | map50_95 | -0.006 |     -0.025 |      +0.015 | no              |
+| E3 − E0b                | map50    | -0.009 |     -0.036 |      +0.016 | no              |
+| E3 − E0b                | map50_95 | +0.009 |     -0.015 |      +0.033 | no              |
+| E2 − E1                 | map50    | +0.017 |     -0.005 |      +0.040 | no              |
+| E2 − E1                 | map50_95 | +0.096 |     +0.074 |      +0.118 | yes             |
+| E3 − E2                 | map50    | +0.007 |     -0.017 |      +0.028 | no              |
+| E3 − E2                 | map50_95 | +0.015 |     -0.006 |      +0.034 | no              |
+| E4 − E2                 | map50    | -0.049 |     -0.078 |      -0.019 | yes             |
+| E4 − E2                 | map50_95 | -0.053 |     -0.076 |      -0.029 | yes             |
+| E4 − E0b                | map50    | -0.065 |     -0.088 |      -0.039 | yes             |
 | E4 − E0b                | map50_95 | -0.059 |     -0.080 |      -0.036 | yes             |
-| E5 − E2                 | map50    | +0.004 |     -0.013 |      +0.022 | no              |
+| E5 − E2                 | map50    | +0.004 |     -0.013 |      +0.020 | no              |
 | E5 − E2                 | map50_95 | -0.001 |     -0.018 |      +0.014 | no              |
-| E5 − E0b                | map50    | -0.011 |     -0.031 |      +0.012 | no              |
-| E5 − E0b                | map50_95 | -0.007 |     -0.025 |      +0.013 | no              |
-| E6s − E3                | map50    | +0.050 |     +0.035 |      +0.072 | yes             |
-| E6s − E3                | map50_95 | +0.056 |     +0.040 |      +0.074 | yes             |
-| E6s − E0b               | map50    | +0.042 |     +0.023 |      +0.062 | yes             |
-| E6s − E0b               | map50_95 | +0.065 |     +0.049 |      +0.086 | yes             |
-| E6s − E2                | map50    | +0.057 |     +0.040 |      +0.077 | yes             |
-| E6s − E2                | map50_95 | +0.071 |     +0.057 |      +0.089 | yes             |
-| E6n − E2                | map50    | +0.023 |     +0.005 |      +0.038 | yes             |
-| E6n − E2                | map50_95 | +0.026 |     +0.012 |      +0.038 | yes             |
-| E6n − E0b               | map50    | +0.007 |     -0.006 |      +0.022 | no              |
-| E6n − E0b               | map50_95 | +0.020 |     +0.004 |      +0.038 | yes             |
-| E6s − E6n               | map50    | +0.034 |     +0.019 |      +0.052 | yes             |
-| E6s − E6n               | map50_95 | +0.045 |     +0.031 |      +0.060 | yes             |
-| E0a_yolo_timing_s − E3  | map50    | +0.039 |     +0.021 |      +0.063 | yes             |
-| E0a_yolo_timing_s − E3  | map50_95 | +0.030 |     +0.011 |      +0.052 | yes             |
-| E0a_yolo_timing_s − E0b | map50    | +0.031 |     +0.010 |      +0.050 | yes             |
-| E0a_yolo_timing_s − E0b | map50_95 | +0.039 |     +0.020 |      +0.058 | yes             |
-| E0a_yolo_timing_n − E2  | map50    | -0.003 |     -0.026 |      +0.018 | no              |
-| E0a_yolo_timing_n − E2  | map50_95 | -0.006 |     -0.024 |      +0.012 | no              |
+| E5 − E0b                | map50    | -0.011 |     -0.032 |      +0.010 | no              |
+| E5 − E0b                | map50_95 | -0.007 |     -0.026 |      +0.014 | no              |
+| E6s − E3                | map50    | +0.050 |     +0.031 |      +0.073 | yes             |
+| E6s − E3                | map50_95 | +0.056 |     +0.038 |      +0.076 | yes             |
+| E6s − E0b               | map50    | +0.042 |     +0.020 |      +0.065 | yes             |
+| E6s − E0b               | map50_95 | +0.065 |     +0.044 |      +0.086 | yes             |
+| E6s − E2                | map50    | +0.057 |     +0.037 |      +0.077 | yes             |
+| E6s − E2                | map50_95 | +0.071 |     +0.052 |      +0.090 | yes             |
+| E6n − E2                | map50    | +0.023 |     +0.007 |      +0.040 | yes             |
+| E6n − E2                | map50_95 | +0.026 |     +0.011 |      +0.040 | yes             |
+| E6n − E0b               | map50    | +0.007 |     -0.009 |      +0.024 | no              |
+| E6n − E0b               | map50_95 | +0.020 |     +0.003 |      +0.037 | yes             |
+| E6s − E6n               | map50    | +0.034 |     +0.014 |      +0.053 | yes             |
+| E6s − E6n               | map50_95 | +0.045 |     +0.026 |      +0.064 | yes             |
+| E0a_yolo_timing_s − E3  | map50    | +0.039 |     +0.019 |      +0.063 | yes             |
+| E0a_yolo_timing_s − E3  | map50_95 | +0.030 |     +0.012 |      +0.050 | yes             |
+| E0a_yolo_timing_s − E0b | map50    | +0.031 |     +0.009 |      +0.053 | yes             |
+| E0a_yolo_timing_s − E0b | map50_95 | +0.039 |     +0.018 |      +0.060 | yes             |
+| E0a_yolo_timing_n − E2  | map50    | -0.003 |     -0.023 |      +0.018 | no              |
+| E0a_yolo_timing_n − E2  | map50_95 | -0.006 |     -0.022 |      +0.013 | no              |
 <!-- END:deltas -->
 
 ## E1: Faster R-CNN MobileNetV3-L FPN baseline (Phase 3)
