@@ -233,7 +233,18 @@ def test_crosscheck_counts_a_hit_on_a_difficult_object_as_false_positive(
 
 @pytest.mark.parametrize(
     "name",
-    ["E0a_yolo", "E0a_yolo_timing_n", "E0a_yolo_timing_s", "E2", "E3", "E4", "E5", "E6s", "E6n"],
+    [
+        "E0a_yolo",
+        "E0a_yolo_timing_n",
+        "E0a_yolo_timing_s",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6s",
+        "E6n",
+        "E6s_seed43",
+    ],
 )
 def test_experiment_configs_are_valid(name: str) -> None:
     path = Path(__file__).resolve().parents[1] / "configs" / "experiments" / f"{name}.yaml"

@@ -1,0 +1,21 @@
+# E6s_seed43 (owner request 2026-11-06): E6s with seed 43, to measure seed-to-seed spread on val.
+# It does not replace E6s as the deployed model. Recipe identical to E6s (ADR-015).
+exp_id: E6s_seed43
+seed: 43
+train:
+  weights: yolo26s.pt
+  epochs: 8
+  imgsz: 640
+  batch: 16
+  close_mosaic: 3
+  optimizer: AdamW
+  lr0: 0.0002
+  momentum: 0.9
+  warmup_epochs: 1.0
+  full_coco_head: true
+kaggle:
+  command: vocdet train-yolo --config configs/experiments/E6s_seed43.yaml --data-dir kaggle --out-dir {run_dir}
+  gpu: true
+  pip: ["ultralytics==8.4.191"]
+  sources: ["vocdet-prepare-data"]
+  pull_pattern: '(kaggle_run\.json|command\.log|config\.yaml|run_meta\.json|train_log\.csv|metrics_val\.json|predictions_val\.json|weights/best\.pt)$'
