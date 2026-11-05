@@ -382,7 +382,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
 - [x] **P4.4** E2 (YOLO26n) and E3 (YOLO26s). Launch E2. While it runs, work on P5.1 tooling. Then launch E3.
       Only one GPU kernel runs at a time because the quota is shared.
 - [x] **P4.5** E4 augmentation ablation and E5 frozen backbone (configs per §5).
-- [ ] **P4.6** `make results` and regenerate the EXPERIMENTS tables. Add **ADR-003 Model selection** choosing the
+- [x] **P4.6** `make results` and regenerate the EXPERIMENTS tables. Add **ADR-003 Model selection** choosing the
       deployment candidate by val map50 versus CPU cost (the final latency check happens in Phase 6).
 
 **Exit Phase 4:** E2–E5 collected, defense notes, tag `phase-4`.

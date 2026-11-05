@@ -95,6 +95,40 @@ order they are written, so the plan's references stay valid.
 
 ---
 
+## ADR-003: Model selection (deployment candidate)
+
+- **Date:** 2026-11-06
+- **Status:** accepted for Phases 5–7. Revisited if the P5.2 test results or the Phase 6 latency check
+  disagree.
+- **Context:** P4.6 picks the deployment candidate by val mAP50 against CPU cost. The service runs on a free
+  Hugging Face CPU Space, so latency per image matters as well as accuracy.
+- **Evidence:**
+  - Accuracy: `results/paired_deltas.csv` (paired bootstrap, ADR-014) and `results/experiments.csv`.
+  - CPU cost: `results/diagnostics/cpu_cost_quick.json` (`scripts/quick_cpu_cost.py`), with parameter count
+    and median batch-1 latency on the development laptop. It ranks candidates; it is not the Phase 6
+    benchmark.
+- **Decision: E6s (YOLO26s, gentle fine-tune) is the deployment candidate. E6n is the fallback.**
+  - E6s has the highest val mAP50 and mAP50-95 of all runs. Its paired delta CIs exclude zero against E0b,
+    E2, E3 and E6n, on both metrics.
+  - E6s is several times faster than Faster R-CNN (E1) on CPU, with about half its parameters. It is
+    slower than E6n by roughly the ratio of their sizes.
+  - E6n is the fallback if E6s misses the Phase 6 latency target on the Space's CPU. It beats E2 with a CI
+    that excludes zero, but on mAP50 it is not shown to beat the zero-shot E0b.
+- **Caveats:**
+  - E6 was designed *after* looking at val results (ADR-015), so its val score is optimistic as a selection.
+    The P5.2 test evaluation decides. If E6s does not beat E0b and E3 on test, the choice is revisited.
+  - E6n ran on Kaggle's newer image (`docs/ENVIRONMENT.md`), and E6s on the old one.
+  - One seed per configuration. The CIs cover image sampling, not training randomness.
+- **Alternatives considered:**
+  - E0b (zero-shot, no training): simplest, but E6s beats it with a CI that excludes zero.
+  - E3 (the planned YOLO26s recipe): same cost as E6s, lower accuracy.
+  - E1 (Faster R-CNN): slowest on CPU and least accurate on mAP50-95.
+- **Consequences:** P5.2 evaluates E1, E2, E3 (as planned) and E6s on test once. Phase 6 exports E6s first,
+  and E6n only if needed.
+- **Pinned versions:** none added.
+
+---
+
 ## ADR-005: Python 3.11 floor
 
 - **Date:** 2026-10-28
