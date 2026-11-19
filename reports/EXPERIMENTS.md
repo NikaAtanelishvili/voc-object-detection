@@ -72,6 +72,29 @@ Generated from `results/paired_deltas.csv` by `make report`.
 | E0a_yolo_timing_n − E2  | map50_95 | -0.006 |     -0.022 |      +0.013 | no              |
 <!-- END:deltas -->
 
+## Test split (P5.2)
+
+The test split (official VOC2012 `val`, 5823 images) was used once, by `scripts/final_test_eval.py`,
+after model selection (ADR-003). It scores each final model with the same adapters and evaluator as val.
+Every trained checkpoint's sha256 matches its Hub backup. Generated from `results/test_metrics.csv`.
+
+<!-- BEGIN:test -->
+| Exp   | Run                       |   mAP50 |   mAP50-95 |   AP small |   AP medium |   AP large |   AR@100 |
+|:------|:--------------------------|--------:|-----------:|-----------:|------------:|-----------:|---------:|
+| E0b   | E0b_20261028-0321_fa7911f |   0.805 |      0.626 |      0.203 |       0.453 |      0.703 |    0.754 |
+| E1    | E1_20261029-0602_da4e489  |   0.762 |      0.504 |      0.101 |       0.308 |      0.588 |    0.622 |
+| E2    | E2_20261029-1808_ae67b2f  |   0.782 |      0.600 |      0.219 |       0.422 |      0.675 |    0.734 |
+| E3    | E3_20261029-1933_dc8cbeb  |   0.806 |      0.633 |      0.193 |       0.449 |      0.709 |    0.741 |
+| E6s   | E6s_20261102-1659_3f5e706 |   0.856 |      0.689 |      0.302 |       0.528 |      0.757 |    0.801 |
+| E6n   | E6n_20261105-2334_9f2f939 |   0.811 |      0.632 |      0.256 |       0.466 |      0.704 |    0.770 |
+<!-- END:test -->
+
+Paired differences on test: 1000 shared resamples of the test images, the deployment candidate E6s
+against the alternatives (ADR-014). Generated from `results/paired_deltas_test.csv`.
+
+<!-- BEGIN:test_deltas -->
+<!-- END:test_deltas -->
+
 ## E1: Faster R-CNN MobileNetV3-L FPN baseline (Phase 3)
 
 Sources:

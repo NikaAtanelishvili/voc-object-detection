@@ -94,7 +94,7 @@ so each run is charged conservatively. The Kaggle settings page is the authority
 | 2026-11-05 | `E6n_20261105-2334_9f2f939` (complete; **collected**; estimate was 0.305 h; new Kaggle image) | GPU T4 x2 | 980 s | 0.30 h | 6.10 h |
 | 2026-11-06 | `E6s_seed43_20261106-0011_ba39ce5` (`--resolve-only` path check) | CPU only (no GPU quota) | 60 s | 0 h | 6.10 h |
 | 2026-11-06 | `E6s_seed43_20261106-0014_ba39ce5` (complete; **collected**, val only; new Kaggle image) | GPU T4 x2 | 1093 s | 0.30 h | 6.40 h |
-| 2026-11-06 | `final_test_eval_20261106-0017_cfc221d` (P5.2 test evaluation) | CPU only (no GPU quota) | pending | 0 h | 6.40 h |
+| 2026-11-06 | `final_test_eval_20261106-0017_cfc221d` (P5.2 test evaluation, all 6 models; **recorded**) | CPU only (no GPU quota) | 11290 s | 0 h | 6.40 h |
 
 ### Weight backups
 
