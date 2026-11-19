@@ -104,8 +104,8 @@ From the usage log in `docs/ENVIRONMENT.md`:
    - Expected: 5823 for each.
 6. **Where the test split is read.**
    - Run `grep -rn '"test"\]' src scripts`.
-   - Expected: `scripts/final_test_eval.py` (the evaluation), plus `data/integrity.py` and `data/eda.py`
-     (Phase 1 split checks and counts, no predictions).
+   - Expected: `scripts/final_test_eval.py` (the evaluation), `data/integrity.py` and `data/eda.py`
+     (Phase 1 split checks and counts, no predictions), and the two `--split` choice lists in `cli.py`.
    - Note: the `vocdet eval` and `vocdet errors` CLIs still accept `--split test` (open issue 5). No
      committed result used them on test.
 7. **CI.**
