@@ -93,6 +93,16 @@ Paired differences on test: 1000 shared resamples of the test images, the deploy
 against the alternatives (ADR-014). Generated from `results/paired_deltas_test.csv`.
 
 <!-- BEGIN:test_deltas -->
+| Comparison   | Metric   |      Δ |   CI95 low |   CI95 high | CI excludes 0   |
+|:-------------|:---------|-------:|-----------:|------------:|:----------------|
+| E6s − E0b    | map50    | +0.051 |     +0.043 |      +0.058 | yes             |
+| E6s − E0b    | map50_95 | +0.062 |     +0.056 |      +0.069 | yes             |
+| E6s − E3     | map50    | +0.050 |     +0.042 |      +0.057 | yes             |
+| E6s − E3     | map50_95 | +0.056 |     +0.049 |      +0.062 | yes             |
+| E6s − E6n    | map50    | +0.045 |     +0.038 |      +0.051 | yes             |
+| E6s − E6n    | map50_95 | +0.057 |     +0.051 |      +0.063 | yes             |
+| E6s − E1     | map50    | +0.093 |     +0.085 |      +0.102 | yes             |
+| E6s − E1     | map50_95 | +0.185 |     +0.177 |      +0.191 | yes             |
 <!-- END:test_deltas -->
 
 ## E1: Faster R-CNN MobileNetV3-L FPN baseline (Phase 3)
