@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from build_report_tables import deltas_table, experiments_table, replace_block
+from build_report_tables import deltas_table, experiments_table, replace_block, test_split_table
 
 
 def test_replace_block_keeps_hand_written_text_and_is_idempotent() -> None:
@@ -40,3 +40,14 @@ def test_deltas_table_names_experiments_and_signs_values(tmp_path: Path) -> None
     )
     table = deltas_table(path)
     assert "E2 − E0b" in table and "-0.015" in table and "+0.002" in table and "| no" in table
+
+
+def test_test_table_keeps_the_csv_order(tmp_path: Path) -> None:
+    path = tmp_path / "test_metrics.csv"
+    header = "exp_id,run_id,weights,weights_sha256,map50,map50_95,map_small,map_medium,map_large,"
+    path.write_text(
+        header + "mar_100,recorded_utc\n"
+        "E0b,E0b_r,w,h,0.805,0.626,0.2,0.4,0.7,0.7,t\nE6s,E6s_r,w,h,0.856,0.689,0.3,0.5,0.8,0.8,t\n"
+    )
+    table = test_split_table(path)
+    assert table.index("E0b") < table.index("E6s") and "0.856" in table

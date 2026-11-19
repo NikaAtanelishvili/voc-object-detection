@@ -36,6 +36,15 @@ def experiments_table(csv_path: Path) -> str:
     return df.to_markdown(index=False, floatfmt=".3f")
 
 
+def test_split_table(csv_path: Path) -> str:
+    """The once-only test results (P5.2) from results/test_metrics.csv, in FINAL_MODELS order."""
+    columns = {"exp_id": "Exp", "run_id": "Run", "map50": "mAP50", "map50_95": "mAP50-95",
+               "map_small": "AP small", "map_medium": "AP medium", "map_large": "AP large",
+               "mar_100": "AR@100"}  # fmt: skip
+    df = pd.read_csv(csv_path)[list(columns)].rename(columns=columns)
+    return df.to_markdown(index=False, floatfmt=".3f")
+
+
 def deltas_table(csv_path: Path) -> str:
     """Paired bootstrap differences (ADR-014), the only way two runs are compared in reports."""
     df = pd.read_csv(csv_path)
@@ -69,6 +78,11 @@ def main() -> int:
     table = experiments_table(REPO_ROOT / "results" / "experiments.csv")
     text = replace_block(text, "experiments", table)
     text = replace_block(text, "deltas", deltas_table(REPO_ROOT / "results" / "paired_deltas.csv"))
+    results = REPO_ROOT / "results"
+    if (results / "test_metrics.csv").exists():
+        text = replace_block(text, "test", test_split_table(results / "test_metrics.csv"))
+    if (results / "paired_deltas_test.csv").exists():
+        text = replace_block(text, "test_deltas", deltas_table(results / "paired_deltas_test.csv"))
     report.write_text(text)
     logger.info("Updated %s", report)
     return 0
