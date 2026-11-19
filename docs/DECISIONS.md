@@ -98,8 +98,10 @@ order they are written, so the plan's references stay valid.
 ## ADR-003: Model selection (deployment candidate)
 
 - **Date:** 2026-11-06
-- **Status:** accepted for Phases 5–7. Revisited if the P5.2 test results or the Phase 6 latency check
-  disagree.
+- **Status:** accepted; confirmed on test (2026-11-19). Revisited if the Phase 6 latency check disagrees.
+- **Test outcome:** the revisit condition (E6s must beat E0b and E3 on test) is not triggered. Its paired
+  test CIs against E0b, E3, E6n and E1 all exclude zero on mAP50 and mAP50-95
+  (`results/paired_deltas_test.csv`, 1000 draws).
 - **Context:** P4.6 picks the deployment candidate by val mAP50 against CPU cost. The service runs on a free
   Hugging Face CPU Space, so latency per image matters as well as accuracy.
 - **Evidence:**

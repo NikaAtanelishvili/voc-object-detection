@@ -398,7 +398,7 @@ batch, seed=42, deterministic=True, patience, freeze, optimizer` left as the mod
       saved `predictions_val.json`, and take the 2.5th/97.5th percentiles. The CIs are written to `results/`
       by a script, never typed. _Tests:_ identical predictions give a zero-width CI; a fixed seed gives
       identical intervals on reruns.
-- [ ] **P5.2** `scripts/final_test_eval.py`: evaluates final models E1, E2, E3, and the selected configuration
+- [x] **P5.2** `scripts/final_test_eval.py`: evaluates final models E1, E2, E3, and the selected configuration
       on the **test** split exactly once, writes `results/test_metrics.csv`, and refuses to overwrite an existing
       entry without `--force-rerun-with-reason "<text>"` (the reason is logged).
 - [ ] **P5.3** `reports/ERROR_ANALYSIS.md`: TIDE-lite tables for the best two models, failure galleries,
